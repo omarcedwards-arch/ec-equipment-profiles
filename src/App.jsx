@@ -705,6 +705,17 @@ export default function App() {
       <div style={{background:"#171717",border:"1px solid #292524",borderRadius:12,padding:22}}>
         <SL>Add Equipment Profile</SL>
 
+        <div style={{marginBottom:20,paddingBottom:20,borderBottom:"1px solid #292524"}}>
+          <div style={{fontSize:9,color:"#a16207",fontFamily:"monospace",letterSpacing:2,marginBottom:10}}>AI GENERATE — TYPE NAME, GET FULL PROFILE</div>
+          <div style={{display:"flex",gap:10}}>
+            <input value={aiQuery} onChange={e=>setAiQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&generateNew()} placeholder="e.g. Volvo EC950F Excavator" style={{flex:1,background:"#0c0a09",border:"1px solid #44403c",borderRadius:7,padding:"10px 12px",color:"#fef3c7",fontSize:13,fontFamily:"monospace",outline:"none"}}/>
+            <Btn amber onClick={generateNew} disabled={aiAdding||!aiQuery.trim()}>{aiAdding?"Generating"+aiDots:"AI FILL"}</Btn>
+          </div>
+          <div style={{fontSize:9,color:"#44403c",fontFamily:"monospace",marginTop:7}}>Auto-fills all fields from AI training data.</div>
+          {addError&&<div style={{background:"#450a0a",border:"1px solid #991b1b",borderRadius:8,padding:12,color:"#fca5a5",fontFamily:"monospace",fontSize:11,marginTop:10}}>{addError}</div>}
+        </div>
+        <div style={{fontSize:9,color:"#57534e",fontFamily:"monospace",letterSpacing:2,marginBottom:12}}>OR ENTER MANUALLY</div>
+
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:4}}>
           <div style={{gridColumn:"1/-1",...ROW}}>
             <span style={LBL}>Equipment Name *</span>
