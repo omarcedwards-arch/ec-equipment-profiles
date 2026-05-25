@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { calcTransport } from "./transport.js";
 
 
 
@@ -832,7 +833,58 @@ export default function App() {
       </div>
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#f59e0b",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#78716c",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
       {tab==="dimensions"&&<div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:18}}>{Object.entries(current.dimensions||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #1c1917"}}><span style={{color:"#a8a29e",fontSize:13,fontFamily:"monospace"}}>{k}</span><span style={{color:"#f59e0b",fontSize:14,fontWeight:700,fontFamily:"monospace"}}>{v}</span></div>))}</div>}
-      {tab==="transport"&&<div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:18}}>{Object.entries(current.transportInfo||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #1c1917"}}><span style={{color:"#a8a29e",fontSize:12,fontFamily:"monospace"}}>{k}</span><span style={{color:"#fef3c7",fontSize:12,fontFamily:"monospace",textAlign:"right",maxWidth:"55%"}}>{v}</span></div>))}{current.haulerNote&&<div style={{marginTop:14,padding:13,background:"#78350f22",border:"1px solid #78350f",borderRadius:8}}><div style={{fontSize:9,color:"#d97706",fontFamily:"monospace",letterSpacing:2,marginBottom:5}}>HAULER NOTE</div><div style={{fontSize:12,color:"#a8a29e",lineHeight:1.7}}>{current.haulerNote}</div></div>}</div>}
+      {tab==="transport"&&(()=>{
+  const wLbs = current.keySpecs?.find(s=>s.label==="Operating Weight")?.value||"";
+  const tr = calcTransport({
+    weightLbs: wLbs,
+    widthStr:  current.dimensions?.["Overall Width"]||current.dimensions?.["Transport Width"]||"",
+    heightStr: current.dimensions?.["Overall Height"]||current.dimensions?.["Transport Height"]||"",
+    trailerType: current.transportInfo?.["Trailer Type"]||"",
+  });
+  const HL = {fontSize:9,color:"#a16207",fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:8,marginTop:16};
+  const ROW2 = {display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"9px 0",borderBottom:"1px solid #1c1917"};
+  return (
+    <div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:18}}>
+      <div style={HL}>Trailer</div>
+      <div style={{color:"#fef3c7",fontSize:13,fontFamily:"monospace",marginBottom:4}}>{current.transportInfo?.["Trailer Type"]||"—"}</div>
+      <div style={HL}>Permits Required</div>
+      {tr.permits.map((p,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #1c1917"}}>
+          <span style={{color: p.startsWith("No")?"#22c55e":"#f59e0b",fontSize:14}}>{ p.startsWith("No")?"✓":"⚠"}</span>
+          <span style={{color:"#fef3c7",fontSize:12,fontFamily:"monospace"}}>{p}</span>
+        </div>
+      ))}
+      <div style={HL}>Escort Requirements</div>
+      {tr.escorts.map((e,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #1c1917"}}>
+          <span style={{color: e.startsWith("No")?"#22c55e":"#ef4444",fontSize:14}}>{e.startsWith("No")?"✓":"🚨"}</span>
+          <span style={{color:"#fef3c7",fontSize:12,fontFamily:"monospace"}}>{e}</span>
+        </div>
+      ))}
+      <div style={HL}>Chains & Binders (DOT)</div>
+      <div style={{background:"#0c0a09",border:"1px solid #292524",borderRadius:8,padding:12,marginBottom:4}}>
+        {tr.chainCount>0?(
+          <div>
+            <div style={{fontSize:22,fontWeight:700,color:"#f59e0b",fontFamily:"monospace",marginBottom:4}}>{tr.chainCount} chains</div>
+            <div style={{fontSize:11,color:"#a8a29e",fontFamily:"monospace",lineHeight:1.8}}>{tr.chainNote}</div>
+          </div>
+        ):(
+          <div style={{color:"#22c55e",fontFamily:"monospace",fontSize:12}}>{tr.chainNote}</div>
+        )}
+      </div>
+      <div style={HL}>Overhang</div>
+      {tr.notes.map((n,i)=>(
+        <div key={i} style={{color:"#a8a29e",fontSize:12,fontFamily:"monospace",padding:"6px 0"}}>{n}</div>
+      ))}
+      {current.haulerNote&&(
+        <div style={{marginTop:14,padding:13,background:"#78350f22",border:"1px solid #78350f",borderRadius:8}}>
+          <div style={{fontSize:9,color:"#d97706",fontFamily:"monospace",letterSpacing:2,marginBottom:5}}>HAULER NOTE</div>
+          <div style={{fontSize:12,color:"#a8a29e",lineHeight:1.7}}>{current.haulerNote}</div>
+        </div>
+      )}
+    </div>
+  );
+})()}
       {tab==="about"&&<div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:20}}><p style={{fontSize:13,lineHeight:1.9,color:"#d6d3d1",margin:0,whiteSpace:"pre-line"}}>{current.history}</p><div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>{current.tags?.map(t=>(<span key={t} style={{padding:"4px 11px",background:"#292524",borderRadius:20,fontSize:9,color:"#a16207",fontFamily:"monospace",letterSpacing:1,border:"1px solid #44403c"}}>{t}</span>))}</div></div>}
       <div style={{marginTop:24,paddingTop:14,borderTop:"1px solid #1c1917",display:"flex",justifyContent:"space-between"}}>
         <span style={{fontSize:8,color:"#3f3f3f",fontFamily:"monospace",letterSpacing:2}}>EDWARDSCARRIERS.COM</span>
