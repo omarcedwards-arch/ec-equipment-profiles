@@ -19,7 +19,8 @@ exports.handler = async function(event) {
   if (!ANTHROPIC_API_KEY) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "API key not configured" }),
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify({ error: { message: "API key not configured on server" } }),
     };
   }
 
@@ -27,7 +28,7 @@ exports.handler = async function(event) {
   try {
     body = JSON.parse(event.body);
   } catch {
-    return { statusCode: 400, body: JSON.stringify({ error: "Invalid JSON body" }) };
+    return { statusCode: 400, body: JSON.stringify({ error: { message: "Invalid request body" } }) };
   }
 
   try {
@@ -55,7 +56,7 @@ exports.handler = async function(event) {
     return {
       statusCode: 500,
       headers: { "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: { message: err.message } }),
     };
   }
 };
