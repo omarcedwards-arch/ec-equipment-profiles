@@ -1,17 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Equipment Profiles — Edwards Carriers</title>
-    <meta name="description" content="Heavy haul equipment specifications, transport requirements, and dimensions. Edwards Carriers — open-deck heavy haul, 48 states." />
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #0c0a09; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+{
+  "name": "edwards-carriers-equipment-profiles",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "vite": "^5.0.0"
+  }
+}
