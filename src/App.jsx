@@ -757,7 +757,7 @@ export default function App() {
           <div style={ROW}>
             <span style={LBL}>Trailer Type</span>
             <select style={SEL} value={newEq.trailerType} onChange={e=>setNewEq(q=>({...q,trailerType:e.target.value}))}>
-              {["Flatbed","Step Deck","Conestoga","RGN - 2 Axle","RGN - 3 Axle","RGN - 4 Axle"].map(t=>(
+              {["RGN / Lowboy","Multi-Axle Lowboy","Flatbed","Step Deck","Double Drop","Extendable RGN","Multi-Trailer Convoy"].map(t=>(
                 <option key={t}>{t}</option>
               ))}
             </select>
@@ -878,7 +878,7 @@ export default function App() {
     <div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:18}}>
       <label style={LB}>Trailer Type</label>
       <select style={SI} value={ti["Trailer Type"]||""} onChange={e=>saveTransport("Trailer Type",e.target.value)}>
-        {["Flatbed","Step Deck","Conestoga","RGN - 2 Axle","RGN - 3 Axle","RGN - 4 Axle"].map(t=><option key={t}>{t}</option>)}
+        {["RGN / Lowboy","Multi-Axle Lowboy","Flatbed","Step Deck","Double Drop","Extendable RGN","Multi-Trailer Convoy"].map(t=><option key={t}>{t}</option>)}
       </select>
       <label style={LB}>Lowboy Tonnage</label>
       <select style={SI} value={ti["Lowboy Tonnage"]||""} onChange={e=>saveTransport("Lowboy Tonnage",e.target.value)}>
