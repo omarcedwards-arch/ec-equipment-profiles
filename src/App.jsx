@@ -860,30 +860,51 @@ export default function App() {
         {["specs","dimensions","transport","about"].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t.toUpperCase()}</Btn>)}
       </div>
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#f59e0b",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#78716c",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
-      {tab==="dimensions"&&<div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:18}}>{Object.entries(current.dimensions||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #1c1917"}}><span style={{color:"#a8a29e",fontSize:13,fontFamily:"monospace"}}>{k}</span><span style={{color:"#f59e0b",fontSize:14,fontWeight:700,fontFamily:"monospace"}}>{v}</span></div>))}</div>}
-      {tab==="transport"&&(
-  <div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:18}}>
-    {[
-      ["Trailer Type", current.transportInfo?.["Trailer Type"]],
-      ["Lowboy Tonnage", current.transportInfo?.["Lowboy Tonnage"]],
-      ["Permits Required", current.transportInfo?.["Permits Required"]],
-      ["Escort Required", current.transportInfo?.["Escort Required"]],
-      ["Chains Required", current.transportInfo?.["Chains Required"]],
-      ["Recommended Axles", current.transportInfo?.["Recommended Axles"]],
-    ].filter(([k,v])=>v&&v!=="N/A"&&v!=="—").map(([k,v])=>(
-      <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #1c1917"}}>
-        <span style={{color:"#78716c",fontSize:11,fontFamily:"monospace",textTransform:"uppercase",letterSpacing:1}}>{k}</span>
-        <span style={{color: k.includes("Permit")&&v!=="None" ? "#f59e0b" : k.includes("Escort")&&v!=="None" ? "#ef4444" : k.includes("Chain") ? "#f59e0b" : "#fef3c7", fontSize:13,fontFamily:"monospace",fontWeight:600,textAlign:"right",maxWidth:"55%"}}>{v}</span>
-      </div>
-    ))}
-    {current.haulerNote&&(
-      <div style={{marginTop:14,padding:13,background:"#78350f22",border:"1px solid #78350f",borderRadius:8}}>
-        <div style={{fontSize:9,color:"#d97706",fontFamily:"monospace",letterSpacing:2,marginBottom:5}}>HAULER NOTE</div>
-        <div style={{fontSize:12,color:"#a8a29e",lineHeight:1.8}}>{current.haulerNote}</div>
-      </div>
-    )}
-  </div>
-)}
+      {tab==="dimensions"&&<div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:18}}>{Object.entries(current.dimensions||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #1c1917"}}><span style={{color:"#78716c",fontSize:12,fontFamily:"sans-serif"}}>{k}</span><span style={{color:"#f59e0b",fontSize:13,fontWeight:600,fontFamily:"sans-serif"}}>{v}</span></div>))}</div>}
+      {tab==="transport"&&(()=>{
+  const ti = current.transportInfo||{};
+  const SI = {background:"#0c0a09",border:"1px solid #44403c",borderRadius:6,padding:"8px 10px",color:"#fef3c7",fontSize:12,fontFamily:"monospace",width:"100%",marginTop:4};
+  const LB = {fontSize:11,color:"#78716c",fontFamily:"monospace",marginBottom:2,marginTop:14,display:"block"};
+  async function saveTransport(field, val) {
+    const updated = {...current, transportInfo:{...ti,[field]:val}};
+    setCurrent(updated);
+    if(isCustom && current._key) {
+      await store.set(current._key, JSON.stringify({...updated,_savedAt:Date.now()}));
+      loadCustom();
+    }
+    setToast("Saved");
+  }
+  return (
+    <div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:18}}>
+      <label style={LB}>Trailer Type</label>
+      <select style={SI} value={ti["Trailer Type"]||""} onChange={e=>saveTransport("Trailer Type",e.target.value)}>
+        {["Flatbed","Step Deck","Conestoga","RGN - 2 Axle","RGN - 3 Axle","RGN - 4 Axle"].map(t=><option key={t}>{t}</option>)}
+      </select>
+      <label style={LB}>Lowboy Tonnage</label>
+      <select style={SI} value={ti["Lowboy Tonnage"]||""} onChange={e=>saveTransport("Lowboy Tonnage",e.target.value)}>
+        {["","35 Ton Lowboy","40 Ton Lowboy","50-55 Ton Lowboy"].map(t=><option key={t} value={t}>{t||"Not applicable"}</option>)}
+      </select>
+      <label style={LB}>Permits Required</label>
+      <select style={SI} value={ti["Permits Required"]||"None"} onChange={e=>saveTransport("Permits Required",e.target.value)}>
+        {["None","Overheight","Overwidth","Overweight","Overheight + Overwidth","Overheight + Overweight","Overwidth + Overweight","All Permits"].map(t=><option key={t}>{t}</option>)}
+      </select>
+      <label style={LB}>Escort Required</label>
+      <select style={SI} value={ti["Escort Required"]||"None"} onChange={e=>saveTransport("Escort Required",e.target.value)}>
+        {["None","1 Pilot Car","2 Pilot Cars","Police Escort","Police + Pilot Cars"].map(t=><option key={t}>{t}</option>)}
+      </select>
+      <label style={LB}>Chains Required</label>
+      <input style={SI} value={ti["Chains Required"]||""} onChange={e=>saveTransport("Chains Required",e.target.value)} placeholder="e.g. 6 chains"/>
+      <label style={LB}>Recommended Axles</label>
+      <input style={SI} value={ti["Recommended Axles"]||""} onChange={e=>saveTransport("Recommended Axles",e.target.value)} placeholder="e.g. 5-7 Axle"/>
+      {current.haulerNote&&(
+        <div style={{marginTop:18,padding:13,background:"#78350f22",border:"1px solid #78350f",borderRadius:8}}>
+          <div style={{fontSize:11,color:"#d97706",fontFamily:"monospace",marginBottom:5}}>Hauler Note</div>
+          <div style={{fontSize:12,color:"#a8a29e",lineHeight:1.8}}>{current.haulerNote}</div>
+        </div>
+      )}
+    </div>
+  );
+})()}
       {tab==="about"&&<div style={{background:"#171717",border:"1px solid #292524",borderRadius:10,padding:20}}><p style={{fontSize:13,lineHeight:1.9,color:"#d6d3d1",margin:0,whiteSpace:"pre-line"}}>{current.history}</p><div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>{current.tags?.map(t=>(<span key={t} style={{padding:"4px 11px",background:"#292524",borderRadius:20,fontSize:9,color:"#a16207",fontFamily:"monospace",letterSpacing:1,border:"1px solid #44403c"}}>{t}</span>))}</div></div>}
       <div style={{marginTop:24,paddingTop:14,borderTop:"1px solid #1c1917",display:"flex",justifyContent:"space-between"}}>
         <span style={{fontSize:8,color:"#3f3f3f",fontFamily:"monospace",letterSpacing:2}}>EDWARDSCARRIERS.COM</span>
