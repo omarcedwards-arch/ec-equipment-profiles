@@ -3,7 +3,28 @@ import { calcTransport } from "./transport.js";
 
 
 
-const AI_SYSTEM = `You are a heavy equipment expert. Return ONLY raw JSON, no markdown, no backticks, no extra text. Schema exactly: {"name":"","manufacturer":"","category":"","year":"","tagline":"","diagramType":"excavator|telehandler|crane|dozer|generic","keySpecs":[{"label":"","value":"","icon":""}],"dimensions":{},"transportInfo":{},"haulerNote":"","history":"","tags":[]} Use lbs and ft/in only. Be accurate to the specific model.`;
+const AI_SYSTEM = `You are a heavy haul trucking and construction equipment expert with 20 years of experience. Generate a COMPLETE, DETAILED, ACCURATE equipment profile. Return ONLY raw JSON, no markdown, no backticks, no extra text.
+
+Schema exactly:
+{"name":"","manufacturer":"","category":"","year":"","tagline":"","diagramType":"excavator|telehandler|crane|dozer|generic","keySpecs":[{"label":"","value":"","icon":""}],"dimensions":{},"transportInfo":{},"haulerNote":"","history":"","tags":[]}
+
+CRITICAL RULES:
+- Use lbs and ft/in only. Be precise to the exact model.
+- keySpecs: include ALL of these if applicable: Operating Weight, Engine Power, Max Dig Depth, Boom Length, Bucket Capacity, Max Lift Capacity, Max Lift Height, Overall Length, Overall Width, Overall Height, Ground Clearance, Travel Speed, Blade Capacity, Max Tip Height. Use real manufacturer specs.
+- dimensions: include Transport Length, Transport Width, Transport Height, Ground Clearance, Track Width or Tire Size, Turning Radius if applicable.
+- transportInfo: include ALL of these fields:
+  "Trailer Type": most appropriate from [RGN / Lowboy, Multi-Axle Lowboy, Flatbed, Step Deck, Double Drop, Extendable RGN, Multi-Trailer Convoy],
+  "Lowboy Tonnage": most appropriate from [35 Ton Lowboy, 40 Ton Lowboy, 50-55 Ton Lowboy] or "N/A",
+  "Permits Required": accurate assessment from [None, Overheight, Overwidth, Overweight, Overheight + Overwidth, Overheight + Overweight, Overwidth + Overweight, All Permits],
+  "Escort Required": accurate from [None, 1 Pilot Car, 2 Pilot Cars, Police Escort, Police + Pilot Cars],
+  "Chains Required": calculate exactly — minimum 4 chains DOT required over 10,000 lbs, total WLL must equal 50% of cargo weight at 6600 lbs WLL per chain. Show the math e.g. "6 chains @ 6,600 lbs WLL = 39,600 lbs (50% of 78,000 lbs = 39,000 lbs required)",
+  "Recommended Axles": specific axle configuration,
+  "Exhaust Bag Required": "Yes" or "No",
+  "Rear Overhang": allowable rear overhang note
+- haulerNote: write 2-3 sentences of REAL practical advice a heavy haul dispatcher would give — what to watch out for, what needs to be removed or secured, bridge or route considerations.
+- history: write 3-4 sentences of genuine manufacturer and model history — when it was introduced, what it replaced, what it is known for, who uses it.
+- tagline: one punchy descriptive line about what makes this machine notable.
+- tags: 5 relevant industry tags.`;
 
 
 // Storage helpers using localStorage
@@ -555,6 +576,33 @@ function Toast({ msg, onDone }) {
   return <div style={{position:"fixed",bottom:28,left:"50%",transform:"translateX(-50%)",background:"#c9a227",color:"#1a1a1a",padding:"10px 24px",borderRadius:8,fontFamily:"monospace",fontSize:12,fontWeight:700,letterSpacing:2,zIndex:9999,boxShadow:"0 4px 24px #000a",whiteSpace:"nowrap"}}>{msg}</div>;
 }
 
+
+function SharePanel({eq, slug, onCopy}) {
+  const [shareTab, setShareTab] = React.useState("feed");
+  const caption = shareTab==="feed" ? buildFeedCaption(eq) : buildStoryCaption(eq);
+  const btnBase = {flex:1,padding:"9px",borderRadius:6,fontFamily:"sans-serif",fontSize:12,fontWeight:600,cursor:"pointer",border:"1px solid"};
+  return (
+    <div style={{background:"#f8f8f8",border:"1px solid #c9a227",borderRadius:10,padding:16,marginBottom:14}}>
+      <div style={{display:"flex",gap:6,marginBottom:12}}>
+        <button onClick={()=>setShareTab("feed")} style={{...btnBase,borderColor:shareTab==="feed"?"#c9a227":"#dddddd",background:shareTab==="feed"?"#c9a227":"#ffffff",color:"#111111"}}>
+          📸 Feed Post
+        </button>
+        <button onClick={()=>setShareTab("story")} style={{...btnBase,borderColor:shareTab==="story"?"#c9a227":"#dddddd",background:shareTab==="story"?"#c9a227":"#ffffff",color:"#111111"}}>
+          ⚡ Story
+        </button>
+      </div>
+      <div style={{fontSize:11,color:"#888888",fontFamily:"sans-serif",marginBottom:10}}>
+        {shareTab==="feed"?"Full equipment spotlight — permanent SEO value on your feed":"Quick in-transit update — post while loading or delivering"}
+      </div>
+      <pre style={{fontFamily:"monospace",fontSize:11,color:"#222222",lineHeight:1.8,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word",background:"#ffffff",border:"1px solid #eeeeee",padding:12,borderRadius:8,marginBottom:12}}>{caption}</pre>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        <Btn amber onClick={()=>{navigator.clipboard.writeText(caption);onCopy(shareTab==="feed"?"FEED CAPTION COPIED":"STORY CAPTION COPIED");}}>Copy Caption</Btn>
+        <Btn ghost onClick={()=>{navigator.clipboard.writeText("edwardscarriers.com/equipment/"+slug(eq.name));onCopy("LINK COPIED");}}>Copy Link</Btn>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [screen,setScreen]   = useState("home");
   const [current,setCurrent] = useState(null);
@@ -626,7 +674,7 @@ export default function App() {
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           model:"claude-sonnet-4-20250514",
-          max_tokens:1500,
+          max_tokens:2500,
           system:AI_SYSTEM,
           messages:[{role:"user",content:"Equipment profile for: "+aiQuery}]
         })
@@ -843,30 +891,9 @@ export default function App() {
         <Btn ghost active={shareOpen} onClick={()=>setShare(s=>!s)}>SHARE</Btn>
         {isCustom&&<Btn danger onClick={()=>{deleteCustom(current._key);setScreen("home");}}>DELETE</Btn>}
       </div>
-      {shareOpen&&(()=>{
-        const [shareTab,setShareTab] = React.useState("feed");
-        const caption = shareTab==="feed" ? buildFeedCaption(current) : buildStoryCaption(current);
-        return (
-          <div style={{background:"#f8f8f8",border:"1px solid #c9a227",borderRadius:10,padding:16,marginBottom:14}}>
-            <div style={{display:"flex",gap:6,marginBottom:12}}>
-              <button onClick={()=>setShareTab("feed")} style={{flex:1,padding:"9px",borderRadius:6,border:"1px solid "+(shareTab==="feed"?"#c9a227":"#dddddd"),background:shareTab==="feed"?"#c9a227":"#ffffff",color:"#111111",fontFamily:"sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                📸 Feed Post
-              </button>
-              <button onClick={()=>setShareTab("story")} style={{flex:1,padding:"9px",borderRadius:6,border:"1px solid "+(shareTab==="story"?"#c9a227":"#dddddd"),background:shareTab==="story"?"#c9a227":"#ffffff",color:"#111111",fontFamily:"sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                ⚡ Story
-              </button>
-            </div>
-            <div style={{fontSize:11,color:"#888888",fontFamily:"sans-serif",marginBottom:10}}>
-              {shareTab==="feed"?"Full equipment spotlight — permanent SEO value on your feed":"Quick in-transit update — post while loading or delivering"}
-            </div>
-            <pre style={{fontFamily:"monospace",fontSize:11,color:"#222222",lineHeight:1.8,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word",background:"#ffffff",border:"1px solid #eeeeee",padding:12,borderRadius:8,marginBottom:12}}>{caption}</pre>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              <Btn amber onClick={()=>{navigator.clipboard.writeText(caption);setToast(shareTab==="feed"?"FEED CAPTION COPIED":"STORY CAPTION COPIED");}}>Copy Caption</Btn>
-              <Btn ghost onClick={()=>{navigator.clipboard.writeText("edwardscarriers.com/equipment/"+slug(current.name));setToast("LINK COPIED");}}>Copy Link</Btn>
-            </div>
-          </div>
-        );
-      })()}
+      {shareOpen&&(
+        <SharePanel eq={current} slug={slug} onCopy={msg=>setToast(msg)}/>
+      )
       <div style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:12,padding:16,marginBottom:14}}>
         <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
           <Btn ghost active={imgMode==="diagram"} onClick={()=>setImgMode("diagram")}>DIAGRAM</Btn>
