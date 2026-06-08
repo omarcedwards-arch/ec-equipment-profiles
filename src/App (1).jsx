@@ -36,12 +36,12 @@ const db = {
   async uploadPhoto(file, equipmentId) {
     const ext = (file.name||"photo.jpg").split(".").pop();
     const path = equipmentId+"/"+Date.now()+"."+ext;
-    const res = await fetch(SUPABASE_URL+"/storage/v1/object/equipment-photos/"+path, {
+    const res = await fetch(SUPABASE_URL+"/storage/v1/object/Equipment-Photos/"+path, {
       method:"POST", headers:{...H,"Content-Type":file.type||"image/jpeg"},
       body: file
     });
     if(!res.ok) return null;
-    return SUPABASE_URL+"/storage/v1/object/public/equipment-photos/"+path;
+    return SUPABASE_URL+"/storage/v1/object/public/Equipment-Photos/"+path;
   },
   async getPhotos(equipmentId) {
     try {
