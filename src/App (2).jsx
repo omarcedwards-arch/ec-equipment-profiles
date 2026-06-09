@@ -50,11 +50,18 @@ const db = {
     } catch { return []; }
   },
   async insertPhoto(equipmentId, url, isPrimary) {
-    const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_photos", {
-      method:"POST", headers:{...H,"Content-Type":"application/json"},
-      body: JSON.stringify({ equipment_id: equipmentId, url, is_primary: isPrimary })
-    });
-    return res.ok;
+    try {
+      const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_photos", {
+        method:"POST", headers:{...H,"Content-Type":"application/json","Prefer":"return=representation"},
+        body: JSON.stringify({ equipment_id: equipmentId, url, is_primary: isPrimary })
+      });
+      if(!res.ok){
+        const err = await res.text();
+        console.error("insertPhoto error:", err);
+        return false;
+      }
+      return true;
+    } catch(e){ console.error(e); return false; }
   },
   async deletePhoto(photoId) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_photos?id=eq."+photoId, {
@@ -793,7 +800,8 @@ export default function App() {
   function openProfile(eq){
     setCurrent(mapRecord(eq));setTab("specs");setShare(false);
     setScreen("profile");
-    if(eq.id) loadPhotos(eq.id);
+    const eqId = eq.id||eq._id;
+    if(eqId) loadPhotos(eqId);
     else loadPhoto(eq.name);
   }
 
@@ -870,16 +878,26 @@ export default function App() {
 
   async function handlePhoto(e){
     const file=e.target.files?.[0];if(!file||!current)return;
+    const eqId = current._id||current.id;
     try{
       setToast("Uploading...");
-      if(current._id){
-        // Supabase upload for custom profiles
-        const url = await db.uploadPhoto(file, current._id);
-        if(!url){setToast("Upload failed");return;}
-        const isFirst = photos.length===0;
-        await db.insertPhoto(current._id, url, isFirst);
-        await loadPhotos(current._id);
-        setToast("PHOTO SAVED");
+      if(eqId){
+        // Supabase upload
+        const url = await db.uploadPhoto(file, eqId);
+        if(!url){setToast("Storage upload failed");return;}
+        // Show photo immediately
+        setPhoto(url);
+        setImgMode("photo");
+        // Save record to equipment_photos table
+        const inserted = await db.insertPhoto(eqId, url, photos.length===0);
+        if(!inserted){
+          // Still show photo even if DB record fails
+          setPhotos(prev=>[...prev,{id:Date.now(),url,equipment_id:eqId,is_primary:photos.length===0}]);
+          setToast("PHOTO SAVED");
+        } else {
+          await loadPhotos(eqId);
+          setToast("PHOTO SAVED");
+        }
       } else {
         // localStorage fallback for prebuilt profiles
         const b64=await resizeToBase64(file);
@@ -887,7 +905,7 @@ export default function App() {
         localStorage.setItem("photo:"+slug(current.name),b64);
         setToast("PHOTO SAVED");
       }
-    }catch(err){setToast("Upload failed: "+err.message);}
+    }catch(err){setToast("Error: "+err.message);}
   }
 
   async function removePhoto(photoId){
