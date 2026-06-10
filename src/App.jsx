@@ -1258,28 +1258,11 @@ export default function App() {
         {["specs","dimensions","transport","about","log","notes"].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t==="log"?"LOAD LOG":t.toUpperCase()}</Btn>)}
       </div>
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#c9a227",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#6c757d",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
-      {tab==="dimensions"&&(()=>{
-  const expandKey = k => {
-    const map = {"Length":"Equipment Length","Width":"Equipment Width","Height":"Equipment Height","Weight":"Equipment Weight","Clearance":"Ground Clearance","Gauge":"Track Gauge","Equipment Length":"Equipment Length","Equipment Width":"Equipment Width","Equipment Height":"Equipment Height"};
-    return map[k]||k;
+      {tab==="dimensions"&&map[k]||k;
   };
-  return <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>{Object.entries(current.dimensions||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #eeeeee"}}><span style={{color:"#666666",fontSize:12,fontFamily:"sans-serif",fontWeight:500}}>{expandKey(k)}</span><span style={{color:"#c9a227",fontSize:13,fontWeight:600,fontFamily:"sans-serif"}}>{v}</span></div>))}</div>;
-})()}
-      {tab==="transport"&&(()=>{
-  const ti = current.transportInfo||{};
-  const SI = {background:"#ffffff",border:"1px solid #cccccc",borderRadius:6,padding:"8px 10px",color:"#1a1a1a",fontSize:12,fontFamily:"monospace",width:"100%",marginTop:4};
-  const LB = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:4,marginTop:14,display:"block",textTransform:"none"};
-  async function saveTransport(field, val) {
-    const updatedTI = {...ti,[field]:val};
-    const updated = {...current, transportInfo:updatedTI, transport_info:updatedTI};
-    setCurrent(updated);
-    if(current._id||current.id) {
-      await db.update(current._id||current.id, {transport_info: updatedTI});
-    }
-    setToast("Saved");
-  }
-  return (
-    <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>
+  return <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>{Object.entries(current.dimensions||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #eeeeee"}}><span style={{color:"#666666",fontSize:12,fontFamily:"sans-serif",fontWeight:500}}>{expandKey(k)}</span><span style={{color:"#c9a227",fontSize:13,fontWeight:600,fontFamily:"sans-serif"}}>{v}</span></div>))}</div>
+      {tab==="transport"&&(
+<div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>
       <label style={LB}>Trailer Type</label>
       <select style={SI} value={ti["Trailer Type"]||""} onChange={e=>saveTransport("Trailer Type",e.target.value)}>
         {["RGN / Lowboy","Multi-Axle Lowboy","Flatbed","Step Deck","Double Drop","Extendable RGN","Multi-Trailer Convoy"].map(t=><option key={t}>{t}</option>)}
@@ -1316,7 +1299,7 @@ export default function App() {
       )}
     </div>
   );
-})()}
+
       {tab==="about"&&<div style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:20}}><p style={{fontSize:13,lineHeight:1.9,color:"#343a40",margin:0,whiteSpace:"pre-line"}}>{current.history}</p><div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>{current.tags?.map(t=>(<span key={t} style={{padding:"4px 11px",background:"#e9ecef",borderRadius:20,fontSize:9,color:"#8b6914",fontFamily:"monospace",letterSpacing:1,border:"1px solid #44403c"}}>{t}</span>))}</div></div>}
 
       {tab==="notes"&&<NotesTab eqId={current._id||current.id} notes={profileNotes} setNotes={setProfileNotes} onSave={()=>setToast("NOTES SAVED")} slug={slug} name={current.name}/>}
