@@ -728,6 +728,119 @@ function SharePanel({eq, slug, onCopy}) {
   );
 }
 
+
+function NotesTab({eqId, notes, setNotes, onSave, slug, name}) {
+  return (
+    <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>
+      <div style={{fontSize:11,color:"#888888",fontFamily:"sans-serif",marginBottom:10}}>General notes — shipper info, loading tips, receiver details, anything useful.</div>
+      <textarea
+        value={notes}
+        onChange={e=>setNotes(e.target.value)}
+        placeholder="e.g. Shipper always ready by 6am. Watch loading dock clearance at receiver. TWIC required at delivery..."
+        style={{width:"100%",minHeight:180,background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:8,padding:12,fontSize:13,fontFamily:"sans-serif",color:"#222222",resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.7}}
+      />
+      <div style={{marginTop:10}}>
+        <Btn amber onClick={async()=>{
+          if(eqId){ await db.updateNotes(eqId,notes); onSave(); }
+          else{ localStorage.setItem("notes:"+slug(name),notes); onSave(); }
+        }}>Save Notes</Btn>
+      </div>
+    </div>
+  );
+}
+
+function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loadLogs, onToast, resizeToBase64}) {
+  const [addingLog, setAddingLog] = React.useState(false);
+  const SI2 = {background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"8px 10px",color:"#222222",fontSize:12,fontFamily:"sans-serif",width:"100%",boxSizing:"border-box"};
+  const LB2 = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:3,marginTop:10,display:"block"};
+
+  async function saveLog() {
+    if(!eqId){onToast("Save equipment first");return;}
+    if(!newLog.haul_date){onToast("Date required");return;}
+    setSavingLog(true);
+    await db.insertLog({...newLog,equipment_id:eqId,permits_required:newLog.permits_required===true||newLog.permits_required==="true"});
+    await loadLogs(eqId);
+    setNewLog({haul_date:"",broker_name:"",advertised_width:"",actual_width:"",advertised_weight:"",actual_weight:"",permits_required:false,notes:"",attachment_url:""});
+    setAddingLog(false);
+    setSavingLog(false);
+    onToast("HAUL LOGGED");
+  }
+
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <div style={{fontSize:13,fontFamily:"sans-serif",fontWeight:600,color:"#222222"}}>{logs.length} Haul{logs.length!==1?"s":""} Logged</div>
+        <Btn amber onClick={()=>setAddingLog(a=>!a)}>{addingLog?"Cancel":"+ Add Haul"}</Btn>
+      </div>
+      {addingLog&&(
+        <div style={{background:"#ffffff",border:"1px solid #c9a227",borderRadius:10,padding:16,marginBottom:16}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div style={{gridColumn:"1/-1"}}><label style={LB2}>Date of Haul</label><input type="date" style={SI2} value={newLog.haul_date} onChange={e=>setNewLog(l=>({...l,haul_date:e.target.value}))}/></div>
+            <div style={{gridColumn:"1/-1"}}><label style={LB2}>Broker Name</label><input style={SI2} value={newLog.broker_name} onChange={e=>setNewLog(l=>({...l,broker_name:e.target.value}))} placeholder="e.g. TTI Logistics"/></div>
+            <div><label style={LB2}>Advertised Width</label><input style={SI2} value={newLog.advertised_width} onChange={e=>setNewLog(l=>({...l,advertised_width:e.target.value}))} placeholder="e.g. 14 ft"/></div>
+            <div><label style={LB2}>Actual Width</label><input style={SI2} value={newLog.actual_width} onChange={e=>setNewLog(l=>({...l,actual_width:e.target.value}))} placeholder="e.g. 8 ft 4 in"/></div>
+            <div><label style={LB2}>Advertised Weight</label><input style={SI2} value={newLog.advertised_weight} onChange={e=>setNewLog(l=>({...l,advertised_weight:e.target.value}))} placeholder="e.g. 78,000 lbs"/></div>
+            <div><label style={LB2}>Actual Weight</label><input style={SI2} value={newLog.actual_weight} onChange={e=>setNewLog(l=>({...l,actual_weight:e.target.value}))} placeholder="e.g. 44,500 lbs"/></div>
+            <div style={{gridColumn:"1/-1"}}>
+              <label style={LB2}>Permits Actually Required?</label>
+              <select style={SI2} value={newLog.permits_required} onChange={e=>setNewLog(l=>({...l,permits_required:e.target.value==="true"}))}>
+                <option value="false">No — Load was legal</option>
+                <option value="true">Yes — Permits required</option>
+              </select>
+            </div>
+            <div style={{gridColumn:"1/-1"}}>
+              <label style={LB2}>Notes</label>
+              <textarea style={{...SI2,minHeight:80,resize:"vertical"}} value={newLog.notes} onChange={e=>setNewLog(l=>({...l,notes:e.target.value}))} placeholder="Anything worth noting about this haul..."/>
+            </div>
+            <div style={{gridColumn:"1/-1"}}>
+              <label style={LB2}>Weigh Station Ticket (PDF or photo)</label>
+              <input type="file" accept="image/*,.pdf" style={{...SI2,padding:"6px"}} onChange={async e=>{
+                const file=e.target.files?.[0];if(!file)return;
+                const b64=await resizeToBase64(file);
+                setNewLog(l=>({...l,attachment_url:b64}));
+                onToast("Attachment ready");
+              }}/>
+              {newLog.attachment_url&&<div style={{fontSize:10,color:"#22c55e",fontFamily:"sans-serif",marginTop:4}}>✓ Attachment ready</div>}
+            </div>
+          </div>
+          <div style={{marginTop:14}}>
+            <Btn amber onClick={saveLog} disabled={savingLog} style={{width:"100%",padding:"12px"}}>{savingLog?"Saving...":"Save Haul Entry"}</Btn>
+          </div>
+        </div>
+      )}
+      {logs.length===0&&!addingLog&&(
+        <div style={{textAlign:"center",padding:40,color:"#aaaaaa",fontFamily:"sans-serif",fontSize:13}}>No hauls logged yet. Tap + Add Haul after each delivery.</div>
+      )}
+      {logs.map(log=>(
+        <div key={log.id} style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:16,marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:"#222222",fontFamily:"sans-serif"}}>{log.broker_name||"Unknown Broker"}</div>
+              <div style={{fontSize:11,color:"#888888",fontFamily:"sans-serif"}}>{log.haul_date||"No date"}</div>
+            </div>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <span style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontFamily:"sans-serif",fontWeight:600,background:log.permits_required?"#fef9c3":"#dcfce7",color:log.permits_required?"#854d0e":"#166534"}}>
+                {log.permits_required?"⚠ Permits":"✓ Legal"}
+              </span>
+              <Btn danger onClick={async()=>{await db.deleteLog(log.id);await loadLogs(eqId);onToast("Deleted");}}>✕</Btn>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+            {[["Adv. Width",log.advertised_width],["Actual Width",log.actual_width],["Adv. Weight",log.advertised_weight],["Actual Weight",log.actual_weight]].filter(([k,v])=>v).map(([k,v])=>(
+              <div key={k} style={{background:"#f8f8f8",borderRadius:6,padding:"8px 10px"}}>
+                <div style={{fontSize:9,color:"#888888",fontFamily:"sans-serif",textTransform:"uppercase",letterSpacing:1}}>{k}</div>
+                <div style={{fontSize:13,fontWeight:600,color:"#222222",fontFamily:"sans-serif"}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {log.notes&&<div style={{fontSize:12,color:"#555555",fontFamily:"sans-serif",lineHeight:1.7,marginBottom:8}}>{log.notes}</div>}
+          {log.attachment_url&&<div style={{marginTop:8}}><a href={log.attachment_url} download="weigh-station-ticket" style={{fontSize:11,color:"#c9a227",fontFamily:"sans-serif",fontWeight:600,textDecoration:"none"}}>📎 View Weigh Station Ticket</a></div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   const [screen,setScreen]   = useState("home");
   const [current,setCurrent] = useState(null);
@@ -1206,75 +1319,8 @@ export default function App() {
 })()}
       {tab==="about"&&<div style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:20}}><p style={{fontSize:13,lineHeight:1.9,color:"#343a40",margin:0,whiteSpace:"pre-line"}}>{current.history}</p><div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>{current.tags?.map(t=>(<span key={t} style={{padding:"4px 11px",background:"#e9ecef",borderRadius:20,fontSize:9,color:"#8b6914",fontFamily:"monospace",letterSpacing:1,border:"1px solid #44403c"}}>{t}</span>))}</div></div>}
 
-      {tab==="notes"&&(()=>{
-        const eqId=current._id||current.id;
-        return(
-          <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>
-            <div style={{fontSize:11,color:"#888888",fontFamily:"sans-serif",marginBottom:10}}>General notes — shipper info, loading tips, receiver details, anything useful.</div>
-            <textarea value={profileNotes} onChange={e=>setProfileNotes(e.target.value)} placeholder="e.g. Shipper always has it ready by 6am. Watch loading dock clearance at receiver." style={{width:"100%",minHeight:160,background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:8,padding:12,fontSize:13,fontFamily:"sans-serif",color:"#222222",resize:"vertical",outline:"none",boxSizing:"border-box",lineHeight:1.7}}/>
-            <div style={{marginTop:10}}><Btn amber onClick={async()=>{if(eqId){await db.updateNotes(eqId,notes);setToast("NOTES SAVED");}else{localStorage.setItem("notes:"+slug(current.name),profileNotes);setToast("NOTES SAVED");}}}>Save Notes</Btn></div>
-          </div>
-        );
-      })()}
-
-      {tab==="log"&&(()=>{
-        const eqId=current._id||current.id;
-        const SI2={background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"8px 10px",color:"#222222",fontSize:12,fontFamily:"sans-serif",width:"100%",boxSizing:"border-box"};
-        const LB2={fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:3,marginTop:10,display:"block"};
-        async function saveLog(){
-          if(!eqId){setToast("Save equipment first");return;}
-          if(!newLog.haul_date){setToast("Date required");return;}
-          await db.insertLog({...newLog,equipment_id:eqId,permits_required:newLog.permits_required===true||newLog.permits_required==="true"});
-          await loadLogs(eqId);
-          setNewLog({haul_date:"",broker_name:"",advertised_width:"",actual_width:"",advertised_weight:"",actual_weight:"",permits_required:false,notes:""});
-          setAddingLog(false);
-          setToast("LOG SAVED");
-        }
-        return(
-          <div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:13,fontFamily:"sans-serif",fontWeight:600,color:"#222222"}}>{logs.length} Haul{logs.length!==1?"s":""} Logged</div>
-              <Btn amber onClick={()=>setAddingLog(a=>!a)}>{addingLog?"Cancel":"+ Add Haul"}</Btn>
-            </div>
-            {addingLog&&(
-              <div style={{background:"#ffffff",border:"1px solid #c9a227",borderRadius:10,padding:16,marginBottom:16}}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  <div style={{gridColumn:"1/-1"}}><label style={LB2}>Date of Haul</label><input type="date" style={SI2} value={newLog.haul_date} onChange={e=>setNewLog(l=>({...l,haul_date:e.target.value}))}/></div>
-                  <div style={{gridColumn:"1/-1"}}><label style={LB2}>Broker Name</label><input style={SI2} value={newLog.broker_name} onChange={e=>setNewLog(l=>({...l,broker_name:e.target.value}))} placeholder="e.g. TTI Logistics"/></div>
-                  <div><label style={LB2}>Advertised Width</label><input style={SI2} value={newLog.advertised_width} onChange={e=>setNewLog(l=>({...l,advertised_width:e.target.value}))} placeholder="e.g. 14 ft"/></div>
-                  <div><label style={LB2}>Actual Width</label><input style={SI2} value={newLog.actual_width} onChange={e=>setNewLog(l=>({...l,actual_width:e.target.value}))} placeholder="e.g. 8 ft 4 in"/></div>
-                  <div><label style={LB2}>Advertised Weight</label><input style={SI2} value={newLog.advertised_weight} onChange={e=>setNewLog(l=>({...l,advertised_weight:e.target.value}))} placeholder="e.g. 78,000 lbs"/></div>
-                  <div><label style={LB2}>Actual Weight</label><input style={SI2} value={newLog.actual_weight} onChange={e=>setNewLog(l=>({...l,actual_weight:e.target.value}))} placeholder="e.g. 44,500 lbs"/></div>
-                  <div style={{gridColumn:"1/-1"}}><label style={LB2}>Permits Actually Required?</label><select style={SI2} value={newLog.permits_required} onChange={e=>setNewLog(l=>({...l,permits_required:e.target.value==="true"}))}><option value="false">No — Load was legal</option><option value="true">Yes — Permits required</option></select></div>
-                  <div style={{gridColumn:"1/-1"}}><label style={LB2}>Notes</label><textarea style={{...SI2,minHeight:80,resize:"vertical"}} value={newLog.notes} onChange={e=>setNewLog(l=>({...l,notes:e.target.value}))} placeholder="Anything worth noting about this haul..."/></div>
-                  <div style={{gridColumn:"1/-1"}}><label style={LB2}>Weigh Station Ticket (PDF or photo)</label><input type="file" accept="image/*,.pdf" style={{...SI2,padding:"6px"}} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;const b64=await resizeToBase64(file);setNewLog(l=>({...l,attachment_url:b64}));setToast("Attachment ready");}}/>{newLog.attachment_url&&<div style={{fontSize:10,color:"#22c55e",fontFamily:"sans-serif",marginTop:4}}>✓ Attachment ready</div>}</div>
-                </div>
-                <div style={{marginTop:14}}><Btn amber onClick={saveLog}>Save Haul Entry</Btn></div>
-              </div>
-            )}
-            {logs.length===0&&!addingLog&&<div style={{textAlign:"center",padding:40,color:"#aaaaaa",fontFamily:"sans-serif",fontSize:13}}>No hauls logged yet. Tap + Add Haul after each delivery.</div>}
-            {logs.map(log=>(
-              <div key={log.id} style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:16,marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                  <div><div style={{fontSize:13,fontWeight:700,color:"#222222",fontFamily:"sans-serif"}}>{log.broker_name||"Unknown Broker"}</div><div style={{fontSize:11,color:"#888888",fontFamily:"sans-serif"}}>{log.haul_date||"No date"}</div></div>
-                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                    <span style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontFamily:"sans-serif",fontWeight:600,background:log.permits_required?"#fef9c3":"#dcfce7",color:log.permits_required?"#854d0e":"#166534"}}>{log.permits_required?"Permits Required":"Legal Load"}</span>
-                    <Btn danger onClick={async()=>{await db.deleteLog(log.id);await loadLogs(eqId);setToast("Deleted");}}>✕</Btn>
-                  </div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
-                  {[["Advertised Width",log.advertised_width],["Actual Width",log.actual_width],["Advertised Weight",log.advertised_weight],["Actual Weight",log.actual_weight]].filter(([k,v])=>v).map(([k,v])=>(
-                    <div key={k} style={{background:"#f8f8f8",borderRadius:6,padding:"8px 10px"}}><div style={{fontSize:9,color:"#888888",fontFamily:"sans-serif",textTransform:"uppercase",letterSpacing:1}}>{k}</div><div style={{fontSize:13,fontWeight:600,color:"#222222",fontFamily:"sans-serif"}}>{v}</div></div>
-                  ))}
-                </div>
-                {log.notes&&<div style={{fontSize:12,color:"#555555",fontFamily:"sans-serif",lineHeight:1.7,marginBottom:8}}>{log.notes}</div>}
-                {log.attachment_url&&<div style={{marginTop:8}}><a href={log.attachment_url} download="weigh-station-ticket" style={{fontSize:11,color:"#c9a227",fontFamily:"sans-serif",fontWeight:600,textDecoration:"none"}}>📎 View Weigh Station Ticket</a></div>}
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
+      {tab==="notes"&&<NotesTab eqId={current._id||current.id} notes={profileNotes} setNotes={setProfileNotes} onSave={()=>setToast("NOTES SAVED")} slug={slug} name={current.name}/>}
+      {tab==="log"&&<LoadLogTab eqId={current._id||current.id} logs={logs} newLog={newLog} setNewLog={setNewLog} savingLog={savingLog} setSavingLog={setSavingLog} loadLogs={loadLogs} onToast={setToast} resizeToBase64={resizeToBase64}/>
             <div style={{marginTop:24,paddingTop:14,borderTop:"1px solid #1c1917",display:"flex",justifyContent:"space-between"}}>
         <span style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>EDWARDSCARRIERS.COM</span>
         <span style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>@EDWARDSCARRIERS</span>
