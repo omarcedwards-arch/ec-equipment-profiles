@@ -749,10 +749,6 @@ export default function App() {
   const [newLog,setNewLog]     = useState(EMPTY_LOG);
   const [savingLog,setSavingLog] = useState(false);
   const [logs,setLogs]         = useState([]);
-  const [notes,setNotes]       = useState("");
-  const [addingLog,setAddingLog] = useState(false);
-  const EMPTY_LOG = {haul_date:"",broker_name:"",advertised_width:"",actual_width:"",advertised_weight:"",actual_weight:"",permits_required:false,notes:""};
-  const [newLog,setNewLog]     = useState(EMPTY_LOG);
   const [aiQuery,setAiQuery]   = useState("");
   const [aiAdding,setAiAdding] = useState(false);
   const [aiDots,setAiDots]     = useState("");
