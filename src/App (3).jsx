@@ -881,30 +881,23 @@ export default function App() {
     const eqId = current._id||current.id;
     try{
       setToast("Uploading...");
+      // Convert to base64 for reliable display on all devices
+      const b64 = await resizeToBase64(file);
+      setPhoto(b64);
+      setImgMode("photo");
       if(eqId){
-        // Supabase upload
-        const url = await db.uploadPhoto(file, eqId);
-        if(!url){setToast("Storage upload failed");return;}
-        // Show photo immediately
-        setPhoto(url);
-        setImgMode("photo");
-        // Save record to equipment_photos table
-        const inserted = await db.insertPhoto(eqId, url, photos.length===0);
-        if(!inserted){
-          // Still show photo even if DB record fails
-          setPhotos(prev=>[...prev,{id:Date.now(),url,equipment_id:eqId,is_primary:photos.length===0}]);
-          setToast("PHOTO SAVED");
-        } else {
+        // Save base64 to equipment_photos table
+        const inserted = await db.insertPhoto(eqId, b64, photos.length===0);
+        if(inserted){
           await loadPhotos(eqId);
-          setToast("PHOTO SAVED");
+        } else {
+          setPhotos(prev=>[...prev,{id:Date.now()+"",url:b64,equipment_id:eqId,is_primary:photos.length===0}]);
         }
       } else {
-        // localStorage fallback for prebuilt profiles
-        const b64=await resizeToBase64(file);
-        setPhoto(b64);setImgMode("photo");
+        // localStorage for prebuilt profiles
         localStorage.setItem("photo:"+slug(current.name),b64);
-        setToast("PHOTO SAVED");
       }
+      setToast("PHOTO SAVED");
     }catch(err){setToast("Error: "+err.message);}
   }
 
