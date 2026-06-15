@@ -45,7 +45,7 @@ const db = {
   },
   async getPhotos(equipmentId) {
     try {
-      const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_photos?equipment_id=eq."+equipmentId+"&order=is_primary.desc,created_at.asc", { headers: H });
+      const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_photos?equipment_id=eq."+equipmentId+"&order=created_at.desc", { headers: H });
       return res.ok ? res.json() : [];
     } catch { return []; }
   },
@@ -1051,11 +1051,13 @@ export default function App() {
       setImgMode("photo");
       if(eqId){
         // Save base64 to equipment_photos table
-        const inserted = await db.insertPhoto(eqId, b64, photos.length===0);
+        const inserted = await db.insertPhoto(eqId, b64, true);
         if(inserted){
           await loadPhotos(eqId);
+          setPhotoIdx(0);
         } else {
-          setPhotos(prev=>[...prev,{id:Date.now()+"",url:b64,equipment_id:eqId,is_primary:photos.length===0}]);
+          setPhotos(prev=>[{id:Date.now()+"",url:b64,equipment_id:eqId,is_primary:true},...prev]);
+          setPhotoIdx(0);
         }
       } else {
         // localStorage for prebuilt profiles
@@ -1067,13 +1069,14 @@ export default function App() {
 
   async function removePhoto(photoId){
     try{
-      if(photoId){
+      const eqId = current._id||current.id;
+      if(photoId&&eqId){
         await db.deletePhoto(photoId);
-        await loadPhotos(current._id);
-        if(photos.length<=1){setPhoto(null);setImgMode("diagram");}
-      } else {
+        setPhotoIdx(0);
+        await loadPhotos(eqId);
+      } else if(!eqId) {
         localStorage.removeItem("photo:"+slug(current.name));
-        setPhoto(null);setImgMode("diagram");
+        setPhoto(null);setImgMode("diagram");setPhotos([]);
       }
       setToast("PHOTO REMOVED");
     }catch{}
@@ -1241,7 +1244,7 @@ export default function App() {
           <label style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+(imgMode==="photo"?"#c9a227":"#dee2e6"),background:imgMode==="photo"?"#1a3a5c":"transparent",color:imgMode==="photo"?"#1a1a1a":"#6c757d",fontSize:10,fontFamily:"monospace",letterSpacing:1,cursor:"pointer",display:"inline-block"}}>
             UPLOAD PHOTO<input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
           </label>
-          {photo&&imgMode==="photo"&&<Btn danger onClick={removePhoto}>REMOVE</Btn>}
+          {photo&&imgMode==="photo"&&<Btn danger onClick={()=>removePhoto(photos[photoIdx]?.id)}>REMOVE</Btn>}
         </div>
         {imgMode==="diagram"&&(
           <div style={{position:"relative"}}>
@@ -1257,9 +1260,20 @@ export default function App() {
           </div>
         )}
         {imgMode==="photo"&&(
-          <div style={{minHeight:220,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:8,background:"#ffffff",overflow:"hidden"}}>
-            {photo?<div style={{width:"100%",position:"relative",background:"#f0f0f0",borderRadius:8,overflow:"hidden"}}><img src={photo} alt={current.name} style={{width:"100%",height:"auto",maxHeight:480,display:"block",objectFit:"contain"}}/><div style={{position:"absolute",bottom:8,right:10,background:"#00000099",padding:"3px 8px",borderRadius:4,fontSize:8,color:"#c9a227",fontFamily:"monospace"}}>YOUR PHOTO</div></div>
-            :<div style={{textAlign:"center",padding:40}}><div style={{fontSize:36,marginBottom:12}}>📷</div><div style={{fontFamily:"monospace",color:"#6c757d",fontSize:11,letterSpacing:2,marginBottom:14}}>NO PHOTO YET</div><label style={{padding:"10px 22px",background:"#c9a227",color:"#1a1a1a",borderRadius:8,fontSize:11,fontWeight:700,fontFamily:"monospace",letterSpacing:2,cursor:"pointer",display:"inline-block"}}>TAP TO UPLOAD<input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/></label></div>}
+          <div>
+            <div style={{minHeight:220,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:8,background:"#ffffff",overflow:"hidden"}}>
+              {photo?<div style={{width:"100%",position:"relative",background:"#f0f0f0",borderRadius:8,overflow:"hidden"}}><img src={photo} alt={current.name} style={{width:"100%",height:"auto",maxHeight:480,display:"block",objectFit:"contain"}}/><div style={{position:"absolute",bottom:8,right:10,background:"#00000099",padding:"3px 8px",borderRadius:4,fontSize:8,color:"#c9a227",fontFamily:"monospace"}}>YOUR PHOTO{photos.length>1?" "+(photoIdx+1)+"/"+photos.length:""}</div></div>
+              :<div style={{textAlign:"center",padding:40}}><div style={{fontSize:36,marginBottom:12}}>📷</div><div style={{fontFamily:"monospace",color:"#6c757d",fontSize:11,letterSpacing:2,marginBottom:14}}>NO PHOTO YET</div><label style={{padding:"10px 22px",background:"#c9a227",color:"#1a1a1a",borderRadius:8,fontSize:11,fontWeight:700,fontFamily:"monospace",letterSpacing:2,cursor:"pointer",display:"inline-block"}}>TAP TO UPLOAD<input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/></label></div>}
+            </div>
+            {photos.length>1&&(
+              <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
+                {photos.map((p,i)=>(
+                  <div key={p.id||i} onClick={()=>{setPhotoIdx(i);setPhoto(p.url);}} style={{width:54,height:54,borderRadius:6,overflow:"hidden",border:"2px solid "+(i===photoIdx?"#c9a227":"#dee2e6"),cursor:"pointer",flexShrink:0,background:"#f0f0f0"}}>
+                    <img src={p.url} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1294,7 +1308,7 @@ export default function App() {
         {["None","1 Pilot Car","2 Pilot Cars","Police Escort","Police + Pilot Cars"].map(t=><option key={t}>{t}</option>)}
       </select>
       <label style={LB}>Chains Required</label>
-      <input style={SI} value={ti["Chains Required"]||""} onChange={e=>saveTransport("Chains Required",e.target.value)} placeholder="e.g. 6 chains"/>
+      <input style={SI} value={ti["Chains Required"]||""} onChange={e=>saveTransport("Chains Required",e.target.value)} placeholder=""/>
       <label style={LB}>Exhaust Bag Required</label>
       <select style={SI} value={ti["Exhaust Bag Required"]||"No"} onChange={e=>saveTransport("Exhaust Bag Required",e.target.value)}>
         {["No","Yes"].map(t=><option key={t}>{t}</option>)}
@@ -1303,7 +1317,7 @@ export default function App() {
       <select style={SI} value={ti["Boom Securement"]||"No"} onChange={e=>saveTransport("Boom Securement",e.target.value)}>
         {["No","Yes"].map(t=><option key={t}>{t}</option>)}
       </select>
-      <label style={LB}>Recommended Axles</label>
+      <label style={LB}>Recommended Tractor &amp; Trailer Axles</label>
       <input style={SI} value={ti["Recommended Axles"]||""} onChange={e=>saveTransport("Recommended Axles",e.target.value)} placeholder="e.g. 5-7 Axle"/>
       {current.haulerNote&&(
         <div style={{marginTop:18,padding:13,background:"#fff3cd66",border:"1px solid #c9a227",borderRadius:8}}>
