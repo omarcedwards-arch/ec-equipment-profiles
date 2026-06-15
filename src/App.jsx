@@ -753,6 +753,7 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
   const [addingLog, setAddingLog] = React.useState(false);
   const SI2 = {background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"8px 10px",color:"#222222",fontSize:12,fontFamily:"sans-serif",width:"100%",boxSizing:"border-box"};
   const LB2 = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:3,marginTop:10,display:"block"};
+  const EMPTY = {haul_date:"",actual_width:"",actual_height:"",actual_weight:"",permits_required:false,notes:"",attachment_url:""};
 
   async function saveLog() {
     if(!eqId){onToast("Save equipment first");return;}
@@ -760,14 +761,14 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
     setSavingLog(true);
     await db.insertLog({...newLog,equipment_id:eqId,permits_required:newLog.permits_required===true||newLog.permits_required==="true"});
     await loadLogs(eqId);
-    setNewLog({haul_date:"",broker_name:"",advertised_width:"",actual_width:"",advertised_weight:"",actual_weight:"",permits_required:false,notes:"",attachment_url:""});
+    setNewLog(EMPTY);
     setAddingLog(false);
     setSavingLog(false);
     onToast("HAUL LOGGED");
   }
 
   return (
-    <div>
+    <div style={{marginTop:24,paddingTop:18,borderTop:"1px solid #eeeeee"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div style={{fontSize:13,fontFamily:"sans-serif",fontWeight:600,color:"#222222"}}>{logs.length} Haul{logs.length!==1?"s":""} Logged</div>
         <Btn amber onClick={()=>setAddingLog(a=>!a)}>{addingLog?"Cancel":"+ Add Haul"}</Btn>
@@ -776,11 +777,9 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
         <div style={{background:"#ffffff",border:"1px solid #c9a227",borderRadius:10,padding:16,marginBottom:16}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <div style={{gridColumn:"1/-1"}}><label style={LB2}>Date of Haul</label><input type="date" style={SI2} value={newLog.haul_date} onChange={e=>setNewLog(l=>({...l,haul_date:e.target.value}))}/></div>
-            <div style={{gridColumn:"1/-1"}}><label style={LB2}>Broker Name</label><input style={SI2} value={newLog.broker_name} onChange={e=>setNewLog(l=>({...l,broker_name:e.target.value}))} placeholder="e.g. TTI Logistics"/></div>
-            <div><label style={LB2}>Advertised Width</label><input style={SI2} value={newLog.advertised_width} onChange={e=>setNewLog(l=>({...l,advertised_width:e.target.value}))} placeholder="e.g. 14 ft"/></div>
-            <div><label style={LB2}>Actual Width</label><input style={SI2} value={newLog.actual_width} onChange={e=>setNewLog(l=>({...l,actual_width:e.target.value}))} placeholder="e.g. 8 ft 4 in"/></div>
-            <div><label style={LB2}>Advertised Weight</label><input style={SI2} value={newLog.advertised_weight} onChange={e=>setNewLog(l=>({...l,advertised_weight:e.target.value}))} placeholder="e.g. 78,000 lbs"/></div>
-            <div><label style={LB2}>Actual Weight</label><input style={SI2} value={newLog.actual_weight} onChange={e=>setNewLog(l=>({...l,actual_weight:e.target.value}))} placeholder="e.g. 44,500 lbs"/></div>
+            <div><label style={LB2}>Transport Width</label><input style={SI2} value={newLog.actual_width} onChange={e=>setNewLog(l=>({...l,actual_width:e.target.value}))} placeholder="e.g. 8 ft 5 in"/></div>
+            <div><label style={LB2}>Transport Height</label><input style={SI2} value={newLog.actual_height} onChange={e=>setNewLog(l=>({...l,actual_height:e.target.value}))} placeholder="e.g. 11 ft 6 in"/></div>
+            <div style={{gridColumn:"1/-1"}}><label style={LB2}>Transport Weight</label><input style={SI2} value={newLog.actual_weight} onChange={e=>setNewLog(l=>({...l,actual_weight:e.target.value}))} placeholder="e.g. 44,500 lbs"/></div>
             <div style={{gridColumn:"1/-1"}}>
               <label style={LB2}>Permits Actually Required?</label>
               <select style={SI2} value={newLog.permits_required} onChange={e=>setNewLog(l=>({...l,permits_required:e.target.value==="true"}))}>
@@ -809,15 +808,12 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
         </div>
       )}
       {logs.length===0&&!addingLog&&(
-        <div style={{textAlign:"center",padding:40,color:"#aaaaaa",fontFamily:"sans-serif",fontSize:13}}>No hauls logged yet. Tap + Add Haul after each delivery.</div>
+        <div style={{textAlign:"center",padding:30,color:"#aaaaaa",fontFamily:"sans-serif",fontSize:13}}>No hauls logged yet. Tap + Add Haul after each delivery.</div>
       )}
       {logs.map(log=>(
         <div key={log.id} style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:16,marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-            <div>
-              <div style={{fontSize:13,fontWeight:700,color:"#222222",fontFamily:"sans-serif"}}>{log.broker_name||"Unknown Broker"}</div>
-              <div style={{fontSize:11,color:"#888888",fontFamily:"sans-serif"}}>{log.haul_date||"No date"}</div>
-            </div>
+            <div style={{fontSize:11,color:"#888888",fontFamily:"sans-serif"}}>{log.haul_date||"No date"}</div>
             <div style={{display:"flex",gap:6,alignItems:"center"}}>
               <span style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontFamily:"sans-serif",fontWeight:600,background:log.permits_required?"#fef9c3":"#dcfce7",color:log.permits_required?"#854d0e":"#166534"}}>
                 {log.permits_required?"⚠ Permits":"✓ Legal"}
@@ -825,8 +821,8 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
               <Btn danger onClick={async()=>{await db.deleteLog(log.id);await loadLogs(eqId);onToast("Deleted");}}>✕</Btn>
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
-            {[["Adv. Width",log.advertised_width],["Actual Width",log.actual_width],["Adv. Weight",log.advertised_weight],["Actual Weight",log.actual_weight]].filter(([k,v])=>v).map(([k,v])=>(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:8}}>
+            {[["Transport Width",log.actual_width],["Transport Height",log.actual_height],["Transport Weight",log.actual_weight]].filter(([k,v])=>v).map(([k,v])=>(
               <div key={k} style={{background:"#f8f8f8",borderRadius:6,padding:"8px 10px"}}>
                 <div style={{fontSize:9,color:"#888888",fontFamily:"sans-serif",textTransform:"uppercase",letterSpacing:1}}>{k}</div>
                 <div style={{fontSize:13,fontWeight:600,color:"#222222",fontFamily:"sans-serif"}}>{v}</div>
@@ -858,7 +854,7 @@ export default function App() {
   const [photos,setPhotos]     = useState([]);
   const [photoIdx,setPhotoIdx] = useState(0);
   const [profileNotes,setProfileNotes] = useState("");
-  const EMPTY_LOG = {haul_date:"",broker_name:"",advertised_width:"",actual_width:"",advertised_weight:"",actual_weight:"",permits_required:false,notes:"",attachment_url:""};
+  const EMPTY_LOG = {haul_date:"",actual_width:"",actual_height:"",actual_weight:"",permits_required:false,notes:"",attachment_url:""};
   const [newLog,setNewLog]     = useState(EMPTY_LOG);
   const [savingLog,setSavingLog] = useState(false);
   const [logs,setLogs]         = useState([]);
@@ -1264,7 +1260,7 @@ export default function App() {
         )}
       </div>
       <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
-        {["specs","dimensions","transport","about","log","notes"].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t==="log"?"LOAD LOG":t.toUpperCase()}</Btn>)}
+        {["specs","dimensions","transport","about","notes"].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t.toUpperCase()}</Btn>)}
       </div>
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#c9a227",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#6c757d",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
       {tab==="dimensions"&&(()=>{
@@ -1311,6 +1307,7 @@ export default function App() {
           <div style={{fontSize:12,color:"#6c757d",lineHeight:1.8}}>{current.haulerNote}</div>
         </div>
       )}
+      <LoadLogTab eqId={current._id||current.id} logs={logs} newLog={newLog} setNewLog={setNewLog} savingLog={savingLog} setSavingLog={setSavingLog} loadLogs={loadLogs} onToast={setToast} resizeToBase64={resizeToBase64}/>
     </div>
   );
 })()}
@@ -1318,8 +1315,6 @@ export default function App() {
       {tab==="about"&&<div style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:20}}><p style={{fontSize:13,lineHeight:1.9,color:"#343a40",margin:0,whiteSpace:"pre-line"}}>{current.history}</p><div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>{current.tags?.map(t=>(<span key={t} style={{padding:"4px 11px",background:"#e9ecef",borderRadius:20,fontSize:9,color:"#8b6914",fontFamily:"monospace",letterSpacing:1,border:"1px solid #44403c"}}>{t}</span>))}</div></div>}
 
       {tab==="notes"&&<NotesTab eqId={current._id||current.id} notes={profileNotes} setNotes={setProfileNotes} onSave={()=>setToast("NOTES SAVED")} slug={slug} name={current.name}/>}
-      {tab==="log"&&<LoadLogTab eqId={current._id||current.id} logs={logs} newLog={newLog} setNewLog={setNewLog} savingLog={savingLog} setSavingLog={setSavingLog} loadLogs={loadLogs} onToast={setToast} resizeToBase64={resizeToBase64}/>}
-
             <div style={{marginTop:24,paddingTop:14,borderTop:"1px solid #1c1917",display:"flex",justifyContent:"space-between"}}>
         <span style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>EDWARDSCARRIERS.COM</span>
         <span style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>@EDWARDSCARRIERS</span>
