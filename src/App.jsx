@@ -776,7 +776,7 @@ function SharePanel({eq, slug, onCopy}) {
       <pre style={{fontFamily:"monospace",fontSize:11,color:"#222222",lineHeight:1.8,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word",background:"#ffffff",border:"1px solid #eeeeee",padding:12,borderRadius:8,marginBottom:12}}>{caption}</pre>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
         <Btn amber onClick={()=>{navigator.clipboard.writeText(caption);onCopy(shareTab==="feed"?"FEED CAPTION COPIED":"STORY CAPTION COPIED");}}>Copy Caption</Btn>
-        <Btn ghost onClick={()=>{navigator.clipboard.writeText("edwardscarriers.com/equipment/"+slug(eq.name));onCopy("LINK COPIED");}}>Copy Link</Btn>
+        <Btn ghost onClick={()=>{navigator.clipboard.writeText("edwardscarriers.com/equipment-specs/"+slug(eq.name));onCopy("LINK COPIED");}}>Copy Link</Btn>
       </div>
     </div>
   );
@@ -1467,7 +1467,7 @@ export default function App() {
 }
 
 function Page({children,toast,onClear}){return(<div style={{fontFamily:"'Georgia',serif",background:"#f5f6f8",minHeight:"100vh",padding:"22px 14px",color:"#2d2d2d"}}>{toast&&<Toast msg={toast} onDone={onClear}/>}<div style={{maxWidth:860,margin:"0 auto"}}>{children}</div><style>{`input::placeholder{color:#aaaaaa}input:focus{border-color:#c9a227!important}select{color:#111111}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style></div>);}
-function Hdr(){return(<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}><div><div style={{fontSize:9,letterSpacing:4,color:"#8b6914",textTransform:"uppercase",fontFamily:"monospace"}}>Edwards Carriers</div><div style={{fontSize:18,fontWeight:700,color:"#1a1a1a",letterSpacing:-0.5}}>Equipment Profiles</div></div><div style={{textAlign:"right"}}><div style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>edwardscarriers.com</div><div style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>@edwardscarriers</div></div></div>);}
+function Hdr(){return(<div style={{marginBottom:22}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:9,letterSpacing:4,color:"#8b6914",textTransform:"uppercase",fontFamily:"monospace"}}>Edwards Carriers</div><div style={{fontSize:18,fontWeight:700,color:"#1a1a1a",letterSpacing:-0.5}}>Equipment Specs</div></div><div style={{textAlign:"right"}}><div style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>edwardscarriers.com</div><div style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>@edwardscarriers</div></div></div><div style={{fontSize:11,color:"#999999",fontFamily:"sans-serif",marginTop:6}}>Specs and transport requirements for equipment we haul</div></div>);}
 function SL({children}){return <div style={{fontSize:9,color:"#adb5bd",fontFamily:"monospace",letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>{children}</div>;}
 function Grd({children}){return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:10}}>{children}</div>;}
 function Crd({eq,onClick,badge}){
