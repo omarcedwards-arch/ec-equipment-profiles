@@ -1258,9 +1258,10 @@ export default function App() {
         {["specs","dimensions","transport","about","log","notes"].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t==="log"?"LOAD LOG":t.toUpperCase()}</Btn>)}
       </div>
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#c9a227",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#6c757d",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
-      {tab==="dimensions"&&map[k]||k;
-  };
-  return <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>{Object.entries(current.dimensions||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #eeeeee"}}><span style={{color:"#666666",fontSize:12,fontFamily:"sans-serif",fontWeight:500}}>{expandKey(k)}</span><span style={{color:"#c9a227",fontSize:13,fontWeight:600,fontFamily:"sans-serif"}}>{v}</span></div>))}</div>
+      {tab==="dimensions"&&(()=>{
+        const expandKey=k=>{const map={"Length":"Equipment Length","Width":"Equipment Width","Height":"Equipment Height","Weight":"Equipment Weight","Clearance":"Ground Clearance","Gauge":"Track Gauge","Transport Length":"Equipment Length","Transport Width":"Equipment Width","Transport Height":"Equipment Height"};return map[k]||k;};
+        return <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>{Object.entries(current.dimensions||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #eeeeee"}}><span style={{color:"#666666",fontSize:12,fontFamily:"sans-serif",fontWeight:500}}>{expandKey(k)}</span><span style={{color:"#c9a227",fontSize:13,fontWeight:600,fontFamily:"sans-serif"}}>{v}</span></div>))}</div>;
+      })()}
       {tab==="transport"&&(
 <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>
       <label style={LB}>Trailer Type</label>
