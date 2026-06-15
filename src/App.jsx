@@ -147,11 +147,15 @@ function resizeToBase64(file) {
     reader.onload = ev => {
       const img = new Image();
       img.onload = () => {
-        const scale = Math.min(900/img.width, 500/img.height, 1);
+        // Cap longest side at 1600px, preserve aspect ratio, high quality
+        const maxDim = 1600;
+        const scale = Math.min(maxDim/img.width, maxDim/img.height, 1);
         const c = document.createElement("canvas");
         c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
-        c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-        resolve(c.toDataURL("image/jpeg",0.82));
+        const ctx = c.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img,0,0,c.width,c.height);
+        resolve(c.toDataURL("image/jpeg",0.9));
       };
       img.src = ev.target.result;
     };
@@ -1254,7 +1258,7 @@ export default function App() {
         )}
         {imgMode==="photo"&&(
           <div style={{minHeight:220,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:8,background:"#ffffff",overflow:"hidden"}}>
-            {photo?<div style={{width:"100%",position:"relative"}}><img src={photo} alt={current.name} style={{width:"100%",borderRadius:8,display:"block",maxHeight:360,objectFit:"cover"}}/><div style={{position:"absolute",bottom:8,right:10,background:"#00000099",padding:"3px 8px",borderRadius:4,fontSize:8,color:"#c9a227",fontFamily:"monospace"}}>YOUR PHOTO</div></div>
+            {photo?<div style={{width:"100%",position:"relative",background:"#f0f0f0",borderRadius:8,overflow:"hidden"}}><img src={photo} alt={current.name} style={{width:"100%",height:"auto",maxHeight:480,display:"block",objectFit:"contain"}}/><div style={{position:"absolute",bottom:8,right:10,background:"#00000099",padding:"3px 8px",borderRadius:4,fontSize:8,color:"#c9a227",fontFamily:"monospace"}}>YOUR PHOTO</div></div>
             :<div style={{textAlign:"center",padding:40}}><div style={{fontSize:36,marginBottom:12}}>📷</div><div style={{fontFamily:"monospace",color:"#6c757d",fontSize:11,letterSpacing:2,marginBottom:14}}>NO PHOTO YET</div><label style={{padding:"10px 22px",background:"#c9a227",color:"#1a1a1a",borderRadius:8,fontSize:11,fontWeight:700,fontFamily:"monospace",letterSpacing:2,cursor:"pointer",display:"inline-block"}}>TAP TO UPLOAD<input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/></label></div>}
           </div>
         )}
