@@ -1031,6 +1031,15 @@ export default function App() {
     finally{setSaving(false);}
   }
 
+  async function saveTransport(field, val) {
+    const updatedTI = {...(current.transportInfo||{}), [field]: val};
+    const updated = {...current, transportInfo: updatedTI};
+    setCurrent(updated);
+    const eqId = current._id||current.id;
+    if(eqId) await db.update(eqId, {transport_info: updatedTI});
+    setToast("Saved");
+  }
+
   async function handlePhoto(e){
     const file=e.target.files?.[0];if(!file||!current)return;
     const eqId = current._id||current.id;
@@ -1262,7 +1271,11 @@ export default function App() {
         const expandKey=k=>{const map={"Length":"Equipment Length","Width":"Equipment Width","Height":"Equipment Height","Weight":"Equipment Weight","Clearance":"Ground Clearance","Gauge":"Track Gauge","Transport Length":"Equipment Length","Transport Width":"Equipment Width","Transport Height":"Equipment Height"};return map[k]||k;};
         return <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>{Object.entries(current.dimensions||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #eeeeee"}}><span style={{color:"#666666",fontSize:12,fontFamily:"sans-serif",fontWeight:500}}>{expandKey(k)}</span><span style={{color:"#c9a227",fontSize:13,fontWeight:600,fontFamily:"sans-serif"}}>{v}</span></div>))}</div>;
       })()}
-      {tab==="transport"&&(
+      {tab==="transport"&&(()=>{
+  const ti = current.transportInfo||{};
+  const SI = {background:"#ffffff",border:"1px solid #cccccc",borderRadius:6,padding:"8px 10px",color:"#111111",fontSize:12,fontFamily:"sans-serif",width:"100%",marginTop:4,boxSizing:"border-box"};
+  const LB = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:4,marginTop:14,display:"block"};
+  return (
 <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>
       <label style={LB}>Trailer Type</label>
       <select style={SI} value={ti["Trailer Type"]||""} onChange={e=>saveTransport("Trailer Type",e.target.value)}>
@@ -1300,11 +1313,13 @@ export default function App() {
       )}
     </div>
   );
+})()}
 
       {tab==="about"&&<div style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:20}}><p style={{fontSize:13,lineHeight:1.9,color:"#343a40",margin:0,whiteSpace:"pre-line"}}>{current.history}</p><div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>{current.tags?.map(t=>(<span key={t} style={{padding:"4px 11px",background:"#e9ecef",borderRadius:20,fontSize:9,color:"#8b6914",fontFamily:"monospace",letterSpacing:1,border:"1px solid #44403c"}}>{t}</span>))}</div></div>}
 
       {tab==="notes"&&<NotesTab eqId={current._id||current.id} notes={profileNotes} setNotes={setProfileNotes} onSave={()=>setToast("NOTES SAVED")} slug={slug} name={current.name}/>}
-      {tab==="log"&&<LoadLogTab eqId={current._id||current.id} logs={logs} newLog={newLog} setNewLog={setNewLog} savingLog={savingLog} setSavingLog={setSavingLog} loadLogs={loadLogs} onToast={setToast} resizeToBase64={resizeToBase64}/>
+      {tab==="log"&&<LoadLogTab eqId={current._id||current.id} logs={logs} newLog={newLog} setNewLog={setNewLog} savingLog={savingLog} setSavingLog={setSavingLog} loadLogs={loadLogs} onToast={setToast} resizeToBase64={resizeToBase64}/>}
+
             <div style={{marginTop:24,paddingTop:14,borderTop:"1px solid #1c1917",display:"flex",justifyContent:"space-between"}}>
         <span style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>EDWARDSCARRIERS.COM</span>
         <span style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>@EDWARDSCARRIERS</span>
