@@ -5,6 +5,56 @@ const SUPABASE_URL = "https://ugjyeuievnhrzbofmlyi.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnanlldWlldm5ocnpib2ZtbHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NDk1OTEsImV4cCI6MjA5NjUyNTU5MX0.E5IyRVLBwy2Z1AK0v7o5mo30o1dtoOqIUigGwic3QIA";
 const H = { "apikey": SUPABASE_KEY, "Authorization": "Bearer "+SUPABASE_KEY };
 
+// Admin authentication
+const auth = {
+  getToken(){ return localStorage.getItem("ec_admin_token"); },
+  getRefresh(){ return localStorage.getItem("ec_admin_refresh"); },
+  isLoggedIn(){ return !!auth.getToken(); },
+  async login(email, password){
+    const res = await fetch(SUPABASE_URL+"/auth/v1/token?grant_type=password", {
+      method:"POST",
+      headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},
+      body: JSON.stringify({email,password})
+    });
+    const data = await res.json();
+    if(data.access_token){
+      localStorage.setItem("ec_admin_token", data.access_token);
+      localStorage.setItem("ec_admin_refresh", data.refresh_token);
+      return true;
+    }
+    return false;
+  },
+  async refresh(){
+    const refresh_token = auth.getRefresh();
+    if(!refresh_token) return false;
+    try{
+      const res = await fetch(SUPABASE_URL+"/auth/v1/token?grant_type=refresh_token", {
+        method:"POST",
+        headers:{"apikey":SUPABASE_KEY,"Content-Type":"application/json"},
+        body: JSON.stringify({refresh_token})
+      });
+      const data = await res.json();
+      if(data.access_token){
+        localStorage.setItem("ec_admin_token", data.access_token);
+        localStorage.setItem("ec_admin_refresh", data.refresh_token);
+        return true;
+      }
+    }catch{}
+    auth.logout();
+    return false;
+  },
+  logout(){
+    localStorage.removeItem("ec_admin_token");
+    localStorage.removeItem("ec_admin_refresh");
+  }
+};
+
+// Headers for write operations - uses admin token if logged in, falls back to anon key
+function AH(){
+  const token = auth.getToken();
+  return { "apikey": SUPABASE_KEY, "Authorization": "Bearer "+(token||SUPABASE_KEY) };
+}
+
 const db = {
   async getAll() {
     try {
@@ -14,7 +64,7 @@ const db = {
   },
   async insert(eq) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_profiles", {
-      method:"POST", headers:{...H,"Content-Type":"application/json","Prefer":"return=representation"},
+      method:"POST", headers:{...AH(),"Content-Type":"application/json","Prefer":"return=representation"},
       body: JSON.stringify(eq)
     });
     const data = await res.json();
@@ -22,14 +72,14 @@ const db = {
   },
   async update(id, fields) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_profiles?id=eq."+id, {
-      method:"PATCH", headers:{...H,"Content-Type":"application/json","Prefer":"return=representation"},
+      method:"PATCH", headers:{...AH(),"Content-Type":"application/json","Prefer":"return=representation"},
       body: JSON.stringify(fields)
     });
     return res.ok;
   },
   async remove(id) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_profiles?id=eq."+id, {
-      method:"DELETE", headers: H
+      method:"DELETE", headers: AH()
     });
     return res.ok;
   },
@@ -37,7 +87,7 @@ const db = {
     const ext = (file.name||"photo.jpg").split(".").pop();
     const path = equipmentId+"/"+Date.now()+"."+ext;
     const res = await fetch(SUPABASE_URL+"/storage/v1/object/Equipment-Photos/"+path, {
-      method:"POST", headers:{...H,"Content-Type":file.type||"image/jpeg"},
+      method:"POST", headers:{...AH(),"Content-Type":file.type||"image/jpeg"},
       body: file
     });
     if(!res.ok) return null;
@@ -52,7 +102,7 @@ const db = {
   async insertPhoto(equipmentId, url, isPrimary) {
     try {
       const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_photos", {
-        method:"POST", headers:{...H,"Content-Type":"application/json","Prefer":"return=representation"},
+        method:"POST", headers:{...AH(),"Content-Type":"application/json","Prefer":"return=representation"},
         body: JSON.stringify({ equipment_id: equipmentId, url, is_primary: isPrimary })
       });
       if(!res.ok){
@@ -65,7 +115,7 @@ const db = {
   },
   async deletePhoto(photoId) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_photos?id=eq."+photoId, {
-      method:"DELETE", headers: H
+      method:"DELETE", headers: AH()
     });
     return res.ok;
   },
@@ -77,20 +127,20 @@ const db = {
   },
   async insertLog(log) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/load_logs", {
-      method:"POST", headers:{...H,"Content-Type":"application/json","Prefer":"return=representation"},
+      method:"POST", headers:{...AH(),"Content-Type":"application/json","Prefer":"return=representation"},
       body: JSON.stringify(log)
     });
     return res.ok;
   },
   async deleteLog(id) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/load_logs?id=eq."+id, {
-      method:"DELETE", headers: H
+      method:"DELETE", headers: AH()
     });
     return res.ok;
   },
   async updateNotes(id, notes) {
     const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_profiles?id=eq."+id, {
-      method:"PATCH", headers:{...H,"Content-Type":"application/json"},
+      method:"PATCH", headers:{...AH(),"Content-Type":"application/json"},
       body: JSON.stringify({notes})
     });
     return res.ok;
@@ -753,7 +803,7 @@ function NotesTab({eqId, notes, setNotes, onSave, slug, name}) {
   );
 }
 
-function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loadLogs, onToast, resizeToBase64}) {
+function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loadLogs, onToast, resizeToBase64, isAdmin}) {
   const [addingLog, setAddingLog] = React.useState(false);
   const SI2 = {background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"8px 10px",color:"#222222",fontSize:12,fontFamily:"sans-serif",width:"100%",boxSizing:"border-box"};
   const LB2 = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:3,marginTop:10,display:"block"};
@@ -775,7 +825,7 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
     <div style={{marginTop:24,paddingTop:18,borderTop:"1px solid #eeeeee"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
         <div style={{fontSize:13,fontFamily:"sans-serif",fontWeight:600,color:"#222222"}}>{logs.length} Haul{logs.length!==1?"s":""} Logged</div>
-        <Btn amber onClick={()=>setAddingLog(a=>!a)}>{addingLog?"Cancel":"+ Add Haul"}</Btn>
+        {isAdmin&&<Btn amber onClick={()=>setAddingLog(a=>!a)}>{addingLog?"Cancel":"+ Add Haul"}</Btn>}
       </div>
       {addingLog&&(
         <div style={{background:"#ffffff",border:"1px solid #c9a227",borderRadius:10,padding:16,marginBottom:16}}>
@@ -822,7 +872,7 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
               <span style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontFamily:"sans-serif",fontWeight:600,background:log.permits_required?"#fef9c3":"#dcfce7",color:log.permits_required?"#854d0e":"#166534"}}>
                 {log.permits_required?"⚠ Permits":"✓ Legal"}
               </span>
-              <Btn danger onClick={async()=>{await db.deleteLog(log.id);await loadLogs(eqId);onToast("Deleted");}}>✕</Btn>
+              {isAdmin&&<Btn danger onClick={async()=>{await db.deleteLog(log.id);await loadLogs(eqId);onToast("Deleted");}}>✕</Btn>}
             </div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:8}}>
@@ -837,6 +887,52 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
           {log.attachment_url&&<div style={{marginTop:8}}><a href={log.attachment_url} download="weigh-station-ticket" style={{fontSize:11,color:"#c9a227",fontFamily:"sans-serif",fontWeight:600,textDecoration:"none"}}>📎 View Weigh Station Ticket</a></div>}
         </div>
       ))}
+    </div>
+  );
+}
+
+
+function LoginModal({onClose, onSuccess}) {
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+
+  async function handleLogin(e){
+    e.preventDefault();
+    setLoading(true);setError(null);
+    try{
+      const ok = await auth.login(email.trim(), password);
+      if(ok) onSuccess();
+      else setError("Invalid email or password");
+    }catch(err){setError("Login failed: "+err.message);}
+    finally{setLoading(false);}
+  }
+
+  return (
+    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#00000066",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:20}} onClick={onClose}>
+      <div style={{background:"#ffffff",borderRadius:12,padding:24,maxWidth:340,width:"100%"}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:14,fontWeight:700,color:"#111111",fontFamily:"sans-serif",marginBottom:14,textAlign:"center"}}>Admin Login</div>
+        <form onSubmit={handleLogin}>
+          <input
+            type="email" autoFocus required value={email} onChange={e=>setEmail(e.target.value)}
+            placeholder="Email" autoComplete="username"
+            style={{width:"100%",background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"10px 12px",fontSize:13,fontFamily:"sans-serif",color:"#111111",marginBottom:10,boxSizing:"border-box"}}
+          />
+          <input
+            type="password" required value={password} onChange={e=>setPassword(e.target.value)}
+            placeholder="Password" autoComplete="current-password"
+            style={{width:"100%",background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"10px 12px",fontSize:13,fontFamily:"sans-serif",color:"#111111",marginBottom:10,boxSizing:"border-box"}}
+          />
+          {error&&<div style={{color:"#dc2626",fontSize:12,fontFamily:"sans-serif",marginBottom:10}}>{error}</div>}
+          <button type="submit" disabled={loading} style={{width:"100%",padding:"11px",background:"#c9a227",color:"#111111",border:"none",borderRadius:6,fontSize:13,fontWeight:700,fontFamily:"sans-serif",cursor:"pointer",marginBottom:8}}>
+            {loading?"Logging in...":"Log In"}
+          </button>
+          <button type="button" onClick={onClose} style={{width:"100%",padding:"10px",background:"none",color:"#888888",border:"none",fontSize:12,fontFamily:"sans-serif",cursor:"pointer"}}>
+            Cancel
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -865,8 +961,22 @@ export default function App() {
   const [aiQuery,setAiQuery]   = useState("");
   const [aiAdding,setAiAdding] = useState(false);
   const [aiDots,setAiDots]     = useState("");
+  const [isAdmin,setIsAdmin]   = useState(auth.isLoggedIn());
+  const [loginOpen,setLoginOpen] = useState(false);
 
   useEffect(()=>{ loadCustom(); },[]);
+
+  // Refresh admin session on load
+  useEffect(()=>{
+    if(auth.isLoggedIn()){
+      auth.refresh().then(ok=>setIsAdmin(ok));
+    }
+  },[]);
+
+  // Kick back to home if admin-only screen accessed without admin
+  useEffect(()=>{
+    if(screen==="add"&&!isAdmin) setScreen("home");
+  },[screen,isAdmin]);
 
   useEffect(()=>{
     if(!aiAdding)return;
@@ -1090,12 +1200,20 @@ export default function App() {
       <Hdr/>
       <div style={{display:"flex",gap:10,marginBottom:18}}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search equipment..." style={{flex:1,background:"#f8f9fa",border:"1px solid #44403c",borderRadius:8,padding:"11px 14px",color:"#1a1a1a",fontSize:13,fontFamily:"monospace",outline:"none"}}/>
-        <Btn amber onClick={()=>{setAddError(null);setScreen("add");}}>+ ADD</Btn>
+        {isAdmin&&<Btn amber onClick={()=>{setAddError(null);setScreen("add");}}>+ ADD</Btn>}
       </div>
       {custom.length>0&&<><SL>Custom ({custom.length})</SL><Grd>{custom.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} badge="CUSTOM" onClick={()=>openProfile(eq)}/>)}</Grd><div style={{marginBottom:16}}/></>}
       <SL>Built-In Library ({PREBUILT.filter(e=>ok(e,search)).length})</SL>
       <Grd>{PREBUILT.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} onClick={()=>openProfile(eq)}/>)}</Grd>
       {!PREBUILT.concat(custom).some(e=>ok(e,search))&&<div style={{textAlign:"center",padding:"40px 20px",color:"#dee2e6",fontFamily:"monospace",fontSize:11}}>No results for "{search}"</div>}
+      <div style={{textAlign:"center",marginTop:30,paddingTop:16,borderTop:"1px solid #eeeeee"}}>
+        {isAdmin?(
+          <button onClick={()=>{auth.logout();setIsAdmin(false);setToast("LOGGED OUT");}} style={{background:"none",border:"none",color:"#aaaaaa",fontSize:10,fontFamily:"monospace",letterSpacing:1,cursor:"pointer",textDecoration:"underline"}}>Admin: Logged in — Log out</button>
+        ):(
+          <button onClick={()=>setLoginOpen(true)} style={{background:"none",border:"none",color:"#cccccc",fontSize:10,fontFamily:"monospace",letterSpacing:1,cursor:"pointer",textDecoration:"underline"}}>Admin Login</button>
+        )}
+      </div>
+      {loginOpen&&<LoginModal onClose={()=>setLoginOpen(false)} onSuccess={()=>{setIsAdmin(true);setLoginOpen(false);setToast("LOGGED IN");}}/>}
     </Page>
   );
 
@@ -1232,7 +1350,7 @@ export default function App() {
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <Btn ghost onClick={()=>setScreen("home")}>← BACK</Btn>
         <Btn ghost active={shareOpen} onClick={()=>setShare(s=>!s)}>SHARE</Btn>
-        {isCustom&&<Btn danger onClick={()=>{deleteCustom(current._id||current.id);setScreen("home");}}>DELETE</Btn>}
+        {isAdmin&&isCustom&&<Btn danger onClick={()=>{deleteCustom(current._id||current.id);setScreen("home");}}>DELETE</Btn>}
       </div>
       {shareOpen&&(
         <SharePanel eq={current} slug={slug} onCopy={msg=>setToast(msg)}/>
@@ -1241,10 +1359,10 @@ export default function App() {
         <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
           <Btn ghost active={imgMode==="diagram"} onClick={()=>setImgMode("diagram")}>DIAGRAM</Btn>
 
-          <label style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+(imgMode==="photo"?"#c9a227":"#dee2e6"),background:imgMode==="photo"?"#1a3a5c":"transparent",color:imgMode==="photo"?"#1a1a1a":"#6c757d",fontSize:10,fontFamily:"monospace",letterSpacing:1,cursor:"pointer",display:"inline-block"}}>
+          {isAdmin&&<label style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+(imgMode==="photo"?"#c9a227":"#dee2e6"),background:imgMode==="photo"?"#1a3a5c":"transparent",color:imgMode==="photo"?"#1a1a1a":"#6c757d",fontSize:10,fontFamily:"monospace",letterSpacing:1,cursor:"pointer",display:"inline-block"}}>
             UPLOAD PHOTO<input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
-          </label>
-          {photo&&imgMode==="photo"&&<Btn danger onClick={()=>removePhoto(photos[photoIdx]?.id)}>REMOVE</Btn>}
+          </label>}
+          {isAdmin&&photo&&imgMode==="photo"&&<Btn danger onClick={()=>removePhoto(photos[photoIdx]?.id)}>REMOVE</Btn>}
         </div>
         {imgMode==="diagram"&&(
           <div style={{position:"relative"}}>
@@ -1263,7 +1381,7 @@ export default function App() {
           <div>
             <div style={{minHeight:220,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:8,background:"#ffffff",overflow:"hidden"}}>
               {photo?<div style={{width:"100%",position:"relative",background:"#f0f0f0",borderRadius:8,overflow:"hidden"}}><img src={photo} alt={current.name} style={{width:"100%",height:"auto",maxHeight:480,display:"block",objectFit:"contain"}}/><div style={{position:"absolute",bottom:8,right:10,background:"#00000099",padding:"3px 8px",borderRadius:4,fontSize:8,color:"#c9a227",fontFamily:"monospace"}}>YOUR PHOTO{photos.length>1?" "+(photoIdx+1)+"/"+photos.length:""}</div></div>
-              :<div style={{textAlign:"center",padding:40}}><div style={{fontSize:36,marginBottom:12}}>📷</div><div style={{fontFamily:"monospace",color:"#6c757d",fontSize:11,letterSpacing:2,marginBottom:14}}>NO PHOTO YET</div><label style={{padding:"10px 22px",background:"#c9a227",color:"#1a1a1a",borderRadius:8,fontSize:11,fontWeight:700,fontFamily:"monospace",letterSpacing:2,cursor:"pointer",display:"inline-block"}}>TAP TO UPLOAD<input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/></label></div>}
+              :<div style={{textAlign:"center",padding:40}}><div style={{fontSize:36,marginBottom:12}}>📷</div><div style={{fontFamily:"monospace",color:"#6c757d",fontSize:11,letterSpacing:2,marginBottom:isAdmin?14:0}}>NO PHOTO YET</div>{isAdmin&&<label style={{padding:"10px 22px",background:"#c9a227",color:"#1a1a1a",borderRadius:8,fontSize:11,fontWeight:700,fontFamily:"monospace",letterSpacing:2,cursor:"pointer",display:"inline-block"}}>TAP TO UPLOAD<input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/></label>}</div>}
             </div>
             {photos.length>1&&(
               <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
@@ -1278,7 +1396,7 @@ export default function App() {
         )}
       </div>
       <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
-        {["specs","dimensions","transport","about","notes"].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t.toUpperCase()}</Btn>)}
+        {["specs","dimensions","transport","about",...(isAdmin?["notes"]:[])].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t.toUpperCase()}</Btn>)}
       </div>
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#c9a227",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#6c757d",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
       {tab==="dimensions"&&(()=>{
@@ -1289,50 +1407,55 @@ export default function App() {
   const ti = current.transportInfo||{};
   const SI = {background:"#ffffff",border:"1px solid #cccccc",borderRadius:6,padding:"8px 10px",color:"#111111",fontSize:12,fontFamily:"sans-serif",width:"100%",marginTop:4,boxSizing:"border-box"};
   const LB = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:4,marginTop:14,display:"block"};
+  const RO = {display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #eeeeee"};
+  const ROL = {fontSize:12,color:"#666666",fontFamily:"sans-serif"};
+  const ROV = {fontSize:13,fontWeight:600,color:"#111111",fontFamily:"sans-serif",textAlign:"right"};
+
+  function SelectField({label, field, options, fallback}){
+    const val = ti[field]||fallback||"";
+    if(!isAdmin) return <div style={RO}><span style={ROL}>{label}</span><span style={ROV}>{val||"—"}</span></div>;
+    return (<>
+      <label style={LB}>{label}</label>
+      <select style={SI} value={val} onChange={e=>saveTransport(field,e.target.value)}>
+        {options.map(t=><option key={t} value={t}>{t||"Not applicable"}</option>)}
+      </select>
+    </>);
+  }
+
+  function InputField({label, field, placeholder}){
+    const val = ti[field]||"";
+    if(!isAdmin) return <div style={RO}><span style={ROL}>{label}</span><span style={ROV}>{val||"—"}</span></div>;
+    return (<>
+      <label style={LB}>{label}</label>
+      <input style={SI} value={val} onChange={e=>saveTransport(field,e.target.value)} placeholder={placeholder||""}/>
+    </>);
+  }
+
   return (
 <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>
-      <label style={LB}>Trailer Type</label>
-      <select style={SI} value={ti["Trailer Type"]||""} onChange={e=>saveTransport("Trailer Type",e.target.value)}>
-        {["RGN / Lowboy","Multi-Axle Lowboy","Flatbed","Step Deck","Double Drop","Extendable RGN","Multi-Trailer Convoy"].map(t=><option key={t}>{t}</option>)}
-      </select>
-      <label style={LB}>Lowboy Tonnage</label>
-      <select style={SI} value={ti["Lowboy Tonnage"]||""} onChange={e=>saveTransport("Lowboy Tonnage",e.target.value)}>
-        {["","35 Ton Lowboy","40 Ton Lowboy","50-55 Ton Lowboy"].map(t=><option key={t} value={t}>{t||"Not applicable"}</option>)}
-      </select>
-      <label style={LB}>Permits Required</label>
-      <select style={SI} value={ti["Permits Required"]||"None"} onChange={e=>saveTransport("Permits Required",e.target.value)}>
-        {["None","Overheight","Overwidth","Overweight","Overheight + Overwidth","Overheight + Overweight","Overwidth + Overweight","All Permits"].map(t=><option key={t}>{t}</option>)}
-      </select>
-      <label style={LB}>Escort Required</label>
-      <select style={SI} value={ti["Escort Required"]||"None"} onChange={e=>saveTransport("Escort Required",e.target.value)}>
-        {["None","1 Pilot Car","2 Pilot Cars","Police Escort","Police + Pilot Cars"].map(t=><option key={t}>{t}</option>)}
-      </select>
-      <label style={LB}>Chains Required</label>
-      <input style={SI} value={ti["Chains Required"]||""} onChange={e=>saveTransport("Chains Required",e.target.value)} placeholder=""/>
-      <label style={LB}>Exhaust Bag Required</label>
-      <select style={SI} value={ti["Exhaust Bag Required"]||"No"} onChange={e=>saveTransport("Exhaust Bag Required",e.target.value)}>
-        {["No","Yes"].map(t=><option key={t}>{t}</option>)}
-      </select>
-      <label style={LB}>Boom Securement</label>
-      <select style={SI} value={ti["Boom Securement"]||"No"} onChange={e=>saveTransport("Boom Securement",e.target.value)}>
-        {["No","Yes"].map(t=><option key={t}>{t}</option>)}
-      </select>
-      <label style={LB}>Recommended Tractor &amp; Trailer Axles</label>
-      <input style={SI} value={ti["Recommended Axles"]||""} onChange={e=>saveTransport("Recommended Axles",e.target.value)} placeholder="e.g. 5-7 Axle"/>
+      <SelectField label="Trailer Type" field="Trailer Type" options={["RGN / Lowboy","Multi-Axle Lowboy","Flatbed","Step Deck","Double Drop","Extendable RGN","Multi-Trailer Convoy"]}/>
+      <SelectField label="Lowboy Tonnage" field="Lowboy Tonnage" options={["","35 Ton Lowboy","40 Ton Lowboy","50-55 Ton Lowboy"]}/>
+      <SelectField label="Permits Required" field="Permits Required" options={["None","Overheight","Overwidth","Overweight","Overheight + Overwidth","Overheight + Overweight","Overwidth + Overweight","All Permits"]} fallback="None"/>
+      <SelectField label="Escort Required" field="Escort Required" options={["None","1 Pilot Car","2 Pilot Cars","Police Escort","Police + Pilot Cars"]} fallback="None"/>
+      <InputField label="Chains Required" field="Chains Required"/>
+      <SelectField label="Exhaust Bag Required" field="Exhaust Bag Required" options={["No","Yes"]} fallback="No"/>
+      <SelectField label="Boom Securement" field="Boom Securement" options={["No","Yes"]} fallback="No"/>
+      <InputField label="Recommended Tractor & Trailer Axles" field="Recommended Axles" placeholder="e.g. 5-7 Axle"/>
       {current.haulerNote&&(
         <div style={{marginTop:18,padding:13,background:"#fff3cd66",border:"1px solid #c9a227",borderRadius:8}}>
           <div style={{fontSize:11,color:"#c9a227",fontFamily:"monospace",marginBottom:5}}>Hauler Note</div>
           <div style={{fontSize:12,color:"#6c757d",lineHeight:1.8}}>{current.haulerNote}</div>
         </div>
       )}
-      <LoadLogTab eqId={current._id||current.id} logs={logs} newLog={newLog} setNewLog={setNewLog} savingLog={savingLog} setSavingLog={setSavingLog} loadLogs={loadLogs} onToast={setToast} resizeToBase64={resizeToBase64}/>
+      <LoadLogTab eqId={current._id||current.id} logs={logs} newLog={newLog} setNewLog={setNewLog} savingLog={savingLog} setSavingLog={setSavingLog} loadLogs={loadLogs} onToast={setToast} resizeToBase64={resizeToBase64} isAdmin={isAdmin}/>
     </div>
   );
 })()}
 
       {tab==="about"&&<div style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:20}}><p style={{fontSize:13,lineHeight:1.9,color:"#343a40",margin:0,whiteSpace:"pre-line"}}>{current.history}</p><div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>{current.tags?.map(t=>(<span key={t} style={{padding:"4px 11px",background:"#e9ecef",borderRadius:20,fontSize:9,color:"#8b6914",fontFamily:"monospace",letterSpacing:1,border:"1px solid #44403c"}}>{t}</span>))}</div></div>}
 
-      {tab==="notes"&&<NotesTab eqId={current._id||current.id} notes={profileNotes} setNotes={setProfileNotes} onSave={()=>setToast("NOTES SAVED")} slug={slug} name={current.name}/>}
+      {tab==="notes"&&isAdmin&&<NotesTab eqId={current._id||current.id} notes={profileNotes} setNotes={setProfileNotes} onSave={()=>setToast("NOTES SAVED")} slug={slug} name={current.name}/>}
+      {tab==="notes"&&!isAdmin&&<div style={{textAlign:"center",padding:30,color:"#aaaaaa",fontFamily:"sans-serif",fontSize:12}}>Admin login required to view notes.</div>}
             <div style={{marginTop:24,paddingTop:14,borderTop:"1px solid #1c1917",display:"flex",justifyContent:"space-between"}}>
         <span style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>EDWARDSCARRIERS.COM</span>
         <span style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>@EDWARDSCARRIERS</span>
