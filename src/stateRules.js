@@ -85,7 +85,7 @@ export function calcRouteRequirements(states, widthFt, heightFt, weightLbs) {
       escort,
       restrictions,
       notes: s.notes,
-      oversize_url: \`https://oversize.io\`
+      oversize_url: "https://oversize.io"
     };
   }).filter(Boolean);
 }
