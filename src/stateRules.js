@@ -2,6 +2,8 @@
 // Source: State DOT regulations 2025-2026
 // Update every 6 months — verify before hauling
 
+export const RULES_LAST_UPDATED = "June 2026";
+
 export const STATE_RULES = {
   AL: {"name":"Alabama","maxW":8.5,"maxH":13.5,"maxWt":80000,"escortW1":12,"escortW2":14,"sunday":false,"night":false,"notes":"2 escorts for 12'+ wide. No Sunday travel. No loads over 16' wide on interstates."},
   AK: {"name":"Alaska","maxW":8.5,"maxH":14,"maxWt":80000,"escortW1":12,"escortW2":14,"sunday":true,"night":false,"notes":"Verify with AK DOT for specific routes. Extreme weather restrictions common."},

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { calcTransport } from "./transport.js";
-import { STATE_RULES, calcRouteRequirements, parseFeet } from "./stateRules.js";
+import { STATE_RULES, calcRouteRequirements, parseFeet, RULES_LAST_UPDATED } from "./stateRules.js";
 
 const SUPABASE_URL = "https://ugjyeuievnhrzbofmlyi.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnanlldWlldm5ocnpib2ZtbHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NDk1OTEsImV4cCI6MjA5NjUyNTU5MX0.E5IyRVLBwy2Z1AK0v7o5mo30o1dtoOqIUigGwic3QIA";
@@ -1066,7 +1066,7 @@ function RoutePlannerTab({eq}) {
   return (
     <div>
       <div style={{background:"#fff8e6",border:"1px solid #c9a227",borderRadius:8,padding:12,marginBottom:16,fontSize:11,color:"#8a6d0b",fontFamily:"sans-serif",lineHeight:1.6}}>
-        ⚠️ <strong>Estimate only.</strong> Always verify with state DOTs before hauling. For official permits use <a href="https://oversize.io" target="_blank" rel="noreferrer" style={{color:"#c9a227",fontWeight:700}}>Oversize.io</a>.
+        ⚠️ <strong>Estimate only.</strong> Always verify with state DOTs before hauling. For official permits use <a href="https://oversize.io" target="_blank" rel="noreferrer" style={{color:"#c9a227",fontWeight:700}}>Oversize.io</a>.<br/><span style={{color:"#aaaaaa",fontSize:10}}>State rules last updated: {RULES_LAST_UPDATED}</span>
       </div>
 
       <label style={LB}>Shipper / Origin Address</label>
