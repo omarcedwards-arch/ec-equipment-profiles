@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { calcTransport } from "./transport.js";
+import { STATE_RULES, calcRouteRequirements, parseFeet } from "./stateRules.js";
 
 const SUPABASE_URL = "https://ugjyeuievnhrzbofmlyi.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVnanlldWlldm5ocnpib2ZtbHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NDk1OTEsImV4cCI6MjA5NjUyNTU5MX0.E5IyRVLBwy2Z1AK0v7o5mo30o1dtoOqIUigGwic3QIA";
@@ -937,6 +938,134 @@ function LoginModal({onClose, onSuccess}) {
   );
 }
 
+
+const US_STATES = [
+  ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],["CA","California"],
+  ["CO","Colorado"],["CT","Connecticut"],["DE","Delaware"],["FL","Florida"],["GA","Georgia"],
+  ["HI","Hawaii"],["ID","Idaho"],["IL","Illinois"],["IN","Indiana"],["IA","Iowa"],
+  ["KS","Kansas"],["KY","Kentucky"],["LA","Louisiana"],["ME","Maine"],["MD","Maryland"],
+  ["MA","Massachusetts"],["MI","Michigan"],["MN","Minnesota"],["MS","Mississippi"],["MO","Missouri"],
+  ["MT","Montana"],["NE","Nebraska"],["NV","Nevada"],["NH","New Hampshire"],["NJ","New Jersey"],
+  ["NM","New Mexico"],["NY","New York"],["NC","North Carolina"],["ND","North Dakota"],["OH","Ohio"],
+  ["OK","Oklahoma"],["OR","Oregon"],["PA","Pennsylvania"],["RI","Rhode Island"],["SC","South Carolina"],
+  ["SD","South Dakota"],["TN","Tennessee"],["TX","Texas"],["UT","Utah"],["VT","Vermont"],
+  ["VA","Virginia"],["WA","Washington"],["WV","West Virginia"],["WI","Wisconsin"],["WY","Wyoming"]
+];
+
+function RoutePlannerTab({eq}) {
+  const [selectedStates, setSelectedStates] = React.useState([]);
+  const [customW, setCustomW] = React.useState("");
+  const [customH, setCustomH] = React.useState("");
+  const [customWt, setCustomWt] = React.useState("");
+  const [results, setResults] = React.useState(null);
+  const [useEqDims, setUseEqDims] = React.useState(true);
+
+  const eqWidth = eq?.dimensions?.["Equipment Width"]||eq?.dimensions?.["Transport Width"]||"";
+  const eqHeight = eq?.dimensions?.["Equipment Height"]||eq?.dimensions?.["Transport Height"]||"";
+  const eqWeight = eq?.keySpecs?.find(s=>s.label==="Operating Weight")?.value||"";
+
+  const width = useEqDims ? eqWidth : customW;
+  const height = useEqDims ? eqHeight : customH;
+  const weight = useEqDims ? eqWeight : customWt;
+
+  function toggleState(abbr){
+    setSelectedStates(s => s.includes(abbr) ? s.filter(x=>x!==abbr) : [...s, abbr]);
+    setResults(null);
+  }
+
+  function calculate(){
+    if(selectedStates.length===0) return;
+    const wFt = parseFeet(width);
+    const hFt = parseFeet(height);
+    const wLbs = parseFloat(String(weight).replace(/,/g,''))||0;
+    setResults(calcRouteRequirements(selectedStates, wFt, hFt, wLbs));
+  }
+
+  const SI = {background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"8px 10px",color:"#222222",fontSize:12,fontFamily:"sans-serif",width:"100%",boxSizing:"border-box"};
+  const LB = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:4,marginTop:12,display:"block"};
+
+  const anyPermits = results && results.some(r=>r.permitsRequired);
+  const anyEscort = results && results.some(r=>r.escort!=="None");
+
+  return (
+    <div>
+      <div style={{background:"#fff8e6",border:"1px solid #c9a227",borderRadius:8,padding:12,marginBottom:16,fontSize:11,color:"#8a6d0b",fontFamily:"sans-serif",lineHeight:1.6}}>
+        ⚠️ <strong>Estimate only.</strong> Rules change frequently. Always verify with state DOTs or a permit service before hauling. For official permits use <a href="https://oversize.io" target="_blank" rel="noreferrer" style={{color:"#c9a227",fontWeight:700}}>Oversize.io</a>.
+      </div>
+
+      <div style={{marginBottom:14}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+          <input type="checkbox" id="useEq" checked={useEqDims} onChange={e=>setUseEqDims(e.target.checked)} style={{width:16,height:16,accentColor:"#c9a227"}}/>
+          <label htmlFor="useEq" style={{fontSize:12,fontFamily:"sans-serif",color:"#333333",cursor:"pointer"}}>Use this equipment's dimensions ({eqWidth||"?"} wide, {eqHeight||"?"} tall, {eqWeight||"?"} lbs)</label>
+        </div>
+        {!useEqDims&&(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            <div><label style={LB}>Width</label><input style={SI} value={customW} onChange={e=>setCustomW(e.target.value)} placeholder="e.g. 14 ft"/></div>
+            <div><label style={LB}>Height</label><input style={SI} value={customH} onChange={e=>setCustomH(e.target.value)} placeholder="e.g. 13 ft 6 in"/></div>
+            <div><label style={LB}>Weight (lbs)</label><input style={SI} value={customWt} onChange={e=>setCustomWt(e.target.value)} placeholder="e.g. 80000"/></div>
+          </div>
+        )}
+      </div>
+
+      <label style={{...LB,marginTop:0}}>Select States on Your Route</label>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+        {US_STATES.map(([abbr,name])=>(
+          <button key={abbr} onClick={()=>toggleState(abbr)} style={{padding:"5px 10px",borderRadius:6,border:"1px solid "+(selectedStates.includes(abbr)?"#c9a227":"#dddddd"),background:selectedStates.includes(abbr)?"#c9a227":"#ffffff",color:selectedStates.includes(abbr)?"#111111":"#555555",fontSize:11,fontFamily:"sans-serif",fontWeight:selectedStates.includes(abbr)?700:400,cursor:"pointer"}}>
+            {abbr}
+          </button>
+        ))}
+      </div>
+      {selectedStates.length>0&&(
+        <div style={{fontSize:11,color:"#888888",fontFamily:"sans-serif",marginBottom:10}}>
+          {selectedStates.length} state{selectedStates.length!==1?"s":""} selected: {selectedStates.join(" → ")}
+        </div>
+      )}
+      <Btn amber onClick={calculate} disabled={selectedStates.length===0} style={{width:"100%",padding:"12px",marginBottom:20}}>
+        Calculate Route Requirements
+      </Btn>
+
+      {results&&(
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+            <div style={{background:anyPermits?"#fef9c3":"#dcfce7",borderRadius:8,padding:12,textAlign:"center"}}>
+              <div style={{fontSize:22,marginBottom:4}}>{anyPermits?"📋":"✓"}</div>
+              <div style={{fontSize:11,fontWeight:700,fontFamily:"sans-serif",color:anyPermits?"#854d0e":"#166534"}}>{anyPermits?"PERMITS REQUIRED":"NO PERMITS NEEDED"}</div>
+              <div style={{fontSize:10,color:"#888888",fontFamily:"sans-serif",marginTop:2}}>in at least one state</div>
+            </div>
+            <div style={{background:anyEscort?"#fef9c3":"#dcfce7",borderRadius:8,padding:12,textAlign:"center"}}>
+              <div style={{fontSize:22,marginBottom:4}}>{anyEscort?"🚨":"✓"}</div>
+              <div style={{fontSize:11,fontWeight:700,fontFamily:"sans-serif",color:anyEscort?"#854d0e":"#166534"}}>{anyEscort?"ESCORT REQUIRED":"NO ESCORTS NEEDED"}</div>
+              <div style={{fontSize:10,color:"#888888",fontFamily:"sans-serif",marginTop:2}}>in at least one state</div>
+            </div>
+          </div>
+
+          {results.map(r=>(
+            <div key={r.abbr} style={{background:"#ffffff",border:"1px solid "+(r.permitsRequired||r.escort!=="None"?"#f59e0b":"#dddddd"),borderRadius:10,padding:14,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#111111",fontFamily:"sans-serif"}}>{r.state}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                  {r.permits.map((p,i)=>p!=="None"&&<span key={i} style={{background:"#fef9c3",color:"#854d0e",fontSize:9,padding:"3px 8px",borderRadius:10,fontFamily:"sans-serif",fontWeight:700}}>{p}</span>)}
+                  {r.escort!=="None"&&<span style={{background:"#fee2e2",color:"#991b1b",fontSize:9,padding:"3px 8px",borderRadius:10,fontFamily:"sans-serif",fontWeight:700}}>🚨 {r.escort}</span>}
+                  {!r.permitsRequired&&r.escort==="None"&&<span style={{background:"#dcfce7",color:"#166534",fontSize:9,padding:"3px 8px",borderRadius:10,fontFamily:"sans-serif",fontWeight:700}}>✓ Legal</span>}
+                </div>
+              </div>
+              {r.restrictions.length>0&&<div style={{fontSize:11,color:"#666666",fontFamily:"sans-serif",marginBottom:4}}>{r.restrictions.join(" · ")}</div>}
+              <div style={{fontSize:10,color:"#888888",fontFamily:"sans-serif",lineHeight:1.6}}>{r.notes}</div>
+            </div>
+          ))}
+
+          <div style={{textAlign:"center",marginTop:16,padding:"12px",background:"#f8f8f8",borderRadius:8}}>
+            <div style={{fontSize:11,color:"#555555",fontFamily:"sans-serif",marginBottom:8}}>Ready to get official permits?</div>
+            <a href="https://oversize.io" target="_blank" rel="noreferrer" style={{display:"inline-block",padding:"10px 20px",background:"#c9a227",color:"#111111",borderRadius:6,fontSize:12,fontWeight:700,fontFamily:"sans-serif",textDecoration:"none"}}>
+              Get Permits on Oversize.io →
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [screen,setScreen]   = useState("home");
   const [current,setCurrent] = useState(null);
@@ -1396,7 +1525,7 @@ export default function App() {
         )}
       </div>
       <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
-        {["specs","dimensions","transport","about",...(isAdmin?["notes"]:[])].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t.toUpperCase()}</Btn>)}
+        {["specs","dimensions","transport","route","about",...(isAdmin?["notes"]:[])].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t==="route"?"ROUTE PLAN":t.toUpperCase()}</Btn>)}
       </div>
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#c9a227",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#6c757d",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
       {tab==="dimensions"&&(()=>{
@@ -1454,6 +1583,7 @@ export default function App() {
 
       {tab==="about"&&<div style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:20}}><p style={{fontSize:13,lineHeight:1.9,color:"#343a40",margin:0,whiteSpace:"pre-line"}}>{current.history}</p><div style={{marginTop:16,display:"flex",gap:8,flexWrap:"wrap"}}>{current.tags?.map(t=>(<span key={t} style={{padding:"4px 11px",background:"#e9ecef",borderRadius:20,fontSize:9,color:"#8b6914",fontFamily:"monospace",letterSpacing:1,border:"1px solid #44403c"}}>{t}</span>))}</div></div>}
 
+      {tab==="route"&&<RoutePlannerTab eq={current}/>}
       {tab==="notes"&&isAdmin&&<NotesTab eqId={current._id||current.id} notes={profileNotes} setNotes={setProfileNotes} onSave={()=>setToast("NOTES SAVED")} slug={slug} name={current.name}/>}
       {tab==="notes"&&!isAdmin&&<div style={{textAlign:"center",padding:30,color:"#aaaaaa",fontFamily:"sans-serif",fontSize:12}}>Admin login required to view notes.</div>}
             <div style={{marginTop:24,paddingTop:14,borderTop:"1px solid #1c1917",display:"flex",justifyContent:"space-between"}}>
