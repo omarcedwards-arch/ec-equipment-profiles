@@ -1076,10 +1076,20 @@ function RoutePlannerTab({eq}) {
       <input style={SI} value={destination} onChange={e=>setDestination(e.target.value)} placeholder="e.g. Baltimore, MD or 2700 Broening Hwy, Baltimore, MD"/>
 
       <div style={{marginTop:14,marginBottom:14}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
           <input type="checkbox" id="useEqR" checked={useEqDims} onChange={e=>setUseEqDims(e.target.checked)} style={{width:16,height:16,accentColor:"#c9a227"}}/>
-          <label htmlFor="useEqR" style={{fontSize:12,fontFamily:"sans-serif",color:"#333333",cursor:"pointer"}}>Use this equipment's dimensions{eqWidth?" ("+eqWidth+" wide, "+eqHeight+" tall, "+eqWeight+")":""}</label>
+          <label htmlFor="useEqR" style={{fontSize:12,fontFamily:"sans-serif",color:"#333333",cursor:"pointer"}}>Use this equipment's dimensions</label>
         </div>
+        {useEqDims&&(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
+            {[["Width",eqWidth||"Not set"],["Height",eqHeight||"Not set"],["Weight",eqWeight||"Not set"]].map(([k,v])=>(
+              <div key={k} style={{background:"#f8f8f8",borderRadius:6,padding:"6px 10px"}}>
+                <div style={{fontSize:9,color:"#888888",fontFamily:"sans-serif",textTransform:"uppercase",letterSpacing:1}}>{k}</div>
+                <div style={{fontSize:12,fontWeight:600,color:"#222222",fontFamily:"sans-serif"}}>{v}</div>
+              </div>
+            ))}
+          </div>
+        )}
         {!useEqDims&&(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
             <div><label style={LB}>Width</label><input style={SI} value={customW} onChange={e=>setCustomW(e.target.value)} placeholder="e.g. 14 ft"/></div>
