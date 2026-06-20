@@ -1114,6 +1114,37 @@ function RoutePlannerTab({eq}) {
             </div>
           </div>
 
+          {(()=>{
+            // Build low/high total estimate
+            let low = 0, high = 0;
+            results.forEach(r => {
+              if(!r.permitsRequired) return;
+              // Parse fee ranges like "$15-$75", "$61.61+", "$10/trip", "$5/ton over 80k"
+              const parseRange = (str) => {
+                if(!str) return [0,0];
+                const nums = str.match(/\d+(\.\d+)?/g);
+                if(!nums) return [0,0];
+                const vals = nums.map(Number);
+                if(str.includes('+')) return [vals[0], vals[0]*2];
+                if(vals.length>=2) return [vals[0], vals[1]];
+                return [vals[0], vals[0]];
+              };
+              r.permits.forEach(p => {
+                if(p==="None") return;
+                if(p==="Overweight") { const [l,h] = parseRange(r.feeOW); low+=l; high+=h; }
+                else { const [l,h] = parseRange(r.feeOS); low+=l; high+=h; }
+              });
+            });
+            if(low===0&&high===0) return null;
+            return (
+              <div style={{background:"#fffbeb",border:"1px solid #c9a227",borderRadius:10,padding:16,marginBottom:16}}>
+                <div style={{fontSize:11,color:"#666666",fontFamily:"sans-serif",marginBottom:4}}>Estimated Total Permit Cost</div>
+                <div style={{fontSize:24,fontWeight:700,color:"#92400e",fontFamily:"sans-serif"}}>${low.toFixed(0)} – ${high.toFixed(0)}</div>
+                <div style={{fontSize:10,color:"#aaaaaa",fontFamily:"sans-serif",marginTop:4,lineHeight:1.6}}>Rough estimate based on published state DOT base fees. Does not include escort vehicles, route surveys, county permits, or mileage-based charges. Verify all fees before hauling.</div>
+              </div>
+            );
+          })()}
+
           {results.map(r=>(
             <div key={r.abbr} style={{background:"#ffffff",border:"1px solid "+(r.permitsRequired||r.escort!=="None"?"#f59e0b":"#dddddd"),borderRadius:10,padding:14,marginBottom:10}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -1124,7 +1155,20 @@ function RoutePlannerTab({eq}) {
                   {!r.permitsRequired&&r.escort==="None"&&<span style={{background:"#dcfce7",color:"#166534",fontSize:9,padding:"3px 8px",borderRadius:10,fontFamily:"sans-serif",fontWeight:700}}>✓ Legal</span>}
                 </div>
               </div>
-              {r.restrictions.length>0&&<div style={{fontSize:11,color:"#666666",fontFamily:"sans-serif",marginBottom:4}}>{r.restrictions.join(" · ")}</div>}
+              {r.restrictions.length>0&&<div style={{fontSize:11,color:"#666666",fontFamily:"sans-serif",marginBottom:6}}>{r.restrictions.join(" · ")}</div>}
+              {r.permitsRequired&&(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,margin:"8px 0"}}>
+                  <div style={{background:"#fffbeb",borderRadius:6,padding:"6px 10px"}}>
+                    <div style={{fontSize:9,color:"#92400e",fontFamily:"sans-serif",textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Oversize Permit Est.</div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#92400e",fontFamily:"sans-serif"}}>{r.feeOS}</div>
+                  </div>
+                  <div style={{background:"#fffbeb",borderRadius:6,padding:"6px 10px"}}>
+                    <div style={{fontSize:9,color:"#92400e",fontFamily:"sans-serif",textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Overweight Permit Est.</div>
+                    <div style={{fontSize:12,fontWeight:700,color:"#92400e",fontFamily:"sans-serif"}}>{r.feeOW}</div>
+                  </div>
+                </div>
+              )}
+              {r.feeNote&&r.permitsRequired&&<div style={{fontSize:10,color:"#aaaaaa",fontFamily:"sans-serif",marginBottom:4,fontStyle:"italic"}}>{r.feeNote}</div>}
               <div style={{fontSize:10,color:"#888888",fontFamily:"sans-serif",lineHeight:1.6}}>{r.notes}</div>
             </div>
           ))}
