@@ -1022,6 +1022,8 @@ function RoutePlannerTab({eq}) {
   const [loading, setLoading] = React.useState(false);
   const [loadMsg, setLoadMsg] = React.useState("");
   const [error, setError] = React.useState(null);
+  const [routeMode, setRouteMode] = React.useState("auto"); // "auto" or "manual"
+  const [manualStates, setManualStates] = React.useState([]);
 
   const eqWidth = eq?.dimensions?.["Equipment Width"]||eq?.dimensions?.["Transport Width"]||"";
   const eqHeight = eq?.dimensions?.["Equipment Height"]||eq?.dimensions?.["Transport Height"]||"";
@@ -1034,7 +1036,22 @@ function RoutePlannerTab({eq}) {
   const SI = {background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"8px 10px",color:"#222222",fontSize:12,fontFamily:"sans-serif",width:"100%",boxSizing:"border-box"};
   const LB = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:4,marginTop:12,display:"block"};
 
+  function toggleManualState(abbr){
+    setManualStates(s => s.includes(abbr) ? s.filter(x=>x!==abbr) : [...s, abbr]);
+    setResults(null);
+  }
+
   async function calculate(){
+    if(routeMode==="manual"){
+      if(manualStates.length===0){setError("Select at least one state");return;}
+      const wFt = parseFeet(width);
+      const hFt = parseFeet(height);
+      const wLbs = parseFloat(String(weight).replace(/,/g,''))||0;
+      setRouteStates(manualStates);
+      setResults(calcRouteRequirements(manualStates, wFt, hFt, wLbs));
+      setError(null);
+      return;
+    }
     if(!origin||!destination){setError("Enter both origin and destination");return;}
     setLoading(true);setError(null);setResults(null);setRouteStates([]);
     try{
@@ -1069,7 +1086,17 @@ function RoutePlannerTab({eq}) {
         ⚠️ <strong>Estimate only.</strong> Always verify with state DOTs before hauling. For official permits use <a href="https://oversize.io" target="_blank" rel="noreferrer" style={{color:"#c9a227",fontWeight:700}}>Oversize.io</a>.<br/><span style={{color:"#aaaaaa",fontSize:10}}>State rules last updated: {RULES_LAST_UPDATED}</span>
       </div>
 
-      <label style={LB}>Shipper / Origin Address</label>
+      <div style={{display:"flex",gap:6,marginBottom:14}}>
+        <button onClick={()=>{setRouteMode("auto");setResults(null);}} style={{flex:1,padding:"9px",borderRadius:6,border:"1px solid "+(routeMode==="auto"?"#c9a227":"#dddddd"),background:routeMode==="auto"?"#c9a227":"#ffffff",color:"#111111",fontFamily:"sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+          📍 Auto-Detect Route
+        </button>
+        <button onClick={()=>{setRouteMode("manual");setResults(null);}} style={{flex:1,padding:"9px",borderRadius:6,border:"1px solid "+(routeMode==="manual"?"#c9a227":"#dddddd"),background:routeMode==="manual"?"#c9a227":"#ffffff",color:"#111111",fontFamily:"sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+          ✋ Choose My States
+        </button>
+      </div>
+
+      {routeMode==="auto"&&<label style={LB}>Shipper / Origin Address</label>}
+      {routeMode==="manual"&&<label style={{...LB,marginTop:0}}>Select States on Your Route</label>}
       <input style={SI} value={origin} onChange={e=>setOrigin(e.target.value)} placeholder="e.g. Grand Island, NE or 3445 W Stolley Park Rd, Grand Island, NE"/>
 
       <label style={LB}>Receiver / Destination Address</label>
