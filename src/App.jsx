@@ -1821,8 +1821,9 @@ export default function App() {
         )}
       </div>
       <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
-        {["specs","hauled","route","about",...(isAdmin?["notes"]:[])].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t==="route"?"ROUTE PLAN":t.toUpperCase()}</Btn>)}
+        {["specs","hauled","route","about",...(isAdmin?["notes"]:[])].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t==="route"?"ROUTE PLAN":t==="specs"?"MFR SPECS":t==="hauled"?"HAULED":t.toUpperCase()}</Btn>)}
       </div>
+      {tab==="specs"&&<div style={{fontSize:10,color:"#aaaaaa",fontFamily:"sans-serif",marginBottom:10,fontStyle:"italic"}}>Manufacturer specifications — actual haul weight may vary by configuration</div>}
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#c9a227",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#6c757d",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
       {tab==="__disabled_dimensions"&&<DimensionsTab current={current} isAdmin={isAdmin} onSave={async(dims)=>{
         const eqId=current._id||current.id;
