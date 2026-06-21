@@ -1527,7 +1527,7 @@ export default function App() {
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search equipment..." style={{flex:1,background:"#f8f9fa",border:"1px solid #44403c",borderRadius:8,padding:"11px 14px",color:"#1a1a1a",fontSize:13,fontFamily:"monospace",outline:"none"}}/>
         {isAdmin&&<Btn amber onClick={()=>{setAddError(null);setScreen("add");}}>+ ADD</Btn>}
       </div>
-      {custom.length>0&&<><SL>Custom ({custom.length})</SL><Grd>{custom.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} badge="CUSTOM" onClick={()=>openProfile(eq)}/>)}</Grd><div style={{marginBottom:16}}/></>}
+      {custom.length>0&&<><SL>Custom ({custom.length})</SL><Grd>{custom.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} badge="✓ HAULED" onClick={()=>openProfile(eq)}/>)}</Grd><div style={{marginBottom:16}}/></>}
       <SL>Built-In Library ({PREBUILT.filter(e=>ok(e,search)).length})</SL>
       <Grd>{PREBUILT.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} onClick={()=>openProfile(eq)}/>)}</Grd>
       {!PREBUILT.concat(custom).some(e=>ok(e,search))&&<div style={{textAlign:"center",padding:"40px 20px",color:"#dee2e6",fontFamily:"monospace",fontSize:11}}>No results for "{search}"</div>}
