@@ -163,7 +163,7 @@ CRITICAL RULES:
   "Trailer Type": most appropriate from [RGN / Lowboy, Multi-Axle Lowboy, Flatbed, Step Deck, Double Drop, Extendable RGN, Multi-Trailer Convoy],
   "Permits Required": accurate assessment from [None, Overheight, Overwidth, Overweight, Overheight + Overwidth, Overheight + Overweight, Overwidth + Overweight, All Permits],
   "Escort Required": accurate from [None, 1 Pilot Car, 2 Pilot Cars, Police Escort, Police + Pilot Cars],
-  "Chains Required": calculate exactly — minimum 4 chains DOT required over 10,000 lbs, total WLL must equal 50% of cargo weight at 6600 lbs WLL per chain. Show the math e.g. "6 chains @ 6,600 lbs WLL = 39,600 lbs (50% of 78,000 lbs = 39,000 lbs required)",
+  "Securement": choose from ["Chains","Straps","Chains & Straps"] based on equipment type — excavators/dozers/crawlers typically require "Chains", wheeled equipment may use "Chains & Straps",
   "Exhaust Bag Required": "Yes" or "No",
   "Boom Securement": "Yes" if machine has a boom, arm, or mast that requires securing for transport, otherwise "No",
   "Rear Overhang": allowable rear overhang note
@@ -1534,7 +1534,7 @@ export default function App() {
         {label:"Trailer Type",value:newEq.trailerType,icon:"🚛"},
       ].filter(s=>s.value!=="—"),
       dimensions:{"Overall Length":newEq.length||"—","Overall Width":newEq.width||"—","Overall Height":newEq.height||"—"},
-      transportInfo:{"Trailer Type":newEq.trailerType,"Permits Required":newEq.permits||"None","Escort Required":newEq.escort||"None","Chains Required":newEq.chains?(newEq.chains+" chains"):"See DOT formula","Exhaust Bag Required":newEq.exhaustBag||"No","Boom Securement":newEq.boomSecurement||"No"},
+      transportInfo:{"Trailer Type":newEq.trailerType,"Permits Required":newEq.permits||"None","Escort Required":newEq.escort||"None","Securement":newEq.securement||"Chains","Exhaust Bag Required":newEq.exhaustBag||"No","Boom Securement":newEq.boomSecurement||"No"},
       haulerNote: newEq.haulerNote.trim()||"Verify all dimensions and weight with equipment owner before transport.",
       history: newEq.name.trim()+" — Added to Edwards Carriers equipment library.",
       tags:[newEq.category,"Heavy Equipment","Open Deck"],
@@ -1717,8 +1717,10 @@ export default function App() {
             </select>
           </div>
           <div style={ROW}>
-            <span style={LBL}>Chains Required</span>
-            <input style={FI} value={newEq.chains} onChange={e=>setNewEq(q=>({...q,chains:e.target.value}))} placeholder="e.g. 6"/>
+            <span style={LBL}>Securement</span>
+            <select style={SEL} value={newEq.securement||"Chains"} onChange={e=>setNewEq(q=>({...q,securement:e.target.value}))}>
+              {["Chains","Straps","Chains & Straps"].map(t=><option key={t}>{t}</option>)}
+            </select>
           </div>
           <div style={ROW}>
             <span style={LBL}>Exhaust Bag Required</span>
@@ -1816,17 +1818,17 @@ export default function App() {
         )}
       </div>
       <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
-        {["specs","dimensions","transport","route","about",...(isAdmin?["notes"]:[])].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t==="route"?"ROUTE PLAN":t.toUpperCase()}</Btn>)}
+        {["specs","hauled","route","about",...(isAdmin?["notes"]:[])].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t==="route"?"ROUTE PLAN":t.toUpperCase()}</Btn>)}
       </div>
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#c9a227",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#6c757d",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
-      {tab==="dimensions"&&<DimensionsTab current={current} isAdmin={isAdmin} onSave={async(dims)=>{
+      {tab==="__disabled_dimensions"&&<DimensionsTab current={current} isAdmin={isAdmin} onSave={async(dims)=>{
         const eqId=current._id||current.id;
         const updated={...current,dimensions:dims};
         setCurrent(updated);
         if(eqId) await db.update(eqId,{dimensions:dims});
         setToast("Dimensions saved");
       }}/>}
-      {tab==="transport"&&(()=>{
+      {tab==="hauled"&&(()=>{
   const ti = current.transportInfo||{};
   const SI = {background:"#ffffff",border:"1px solid #cccccc",borderRadius:6,padding:"8px 10px",color:"#111111",fontSize:12,fontFamily:"sans-serif",width:"100%",marginTop:4,boxSizing:"border-box"};
   const LB = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:4,marginTop:14,display:"block"};
@@ -1864,40 +1866,7 @@ export default function App() {
       <SelectField label="Trailer Type" field="Trailer Type" options={["RGN / Lowboy","Multi-Axle Lowboy","Flatbed","Step Deck","Double Drop","Extendable RGN","Multi-Trailer Convoy"]}/>
       <SelectField label="Permits Required" field="Permits Required" options={["None","Overheight","Overwidth","Overweight","Overheight + Overwidth","Overheight + Overweight","Overwidth + Overweight","All Permits"]} fallback="None"/>
       <SelectField label="Escort Required" field="Escort Required" options={["None","1 Pilot Car","2 Pilot Cars","Police Escort","Police + Pilot Cars"]} fallback="None"/>
-      {(()=>{
-        const weight = current.keySpecs?.find(s=>s.label==="Operating Weight")?.value||"";
-        const length = current.dimensions?.["Equipment Length"]||current.dimensions?.["Transport Length"]||"";
-        const calc = calcChainsRequired(weight, length);
-        const stored = ti["Chains Required"]||"";
-        const LB2 = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:4,marginTop:14,display:"block"};
-        return (
-          <div>
-            <label style={LB2}>Chains Required</label>
-            {calc.count>0&&(
-              <div style={{background:"#fffbeb",border:"1px solid #c9a227",borderRadius:6,padding:"8px 10px",marginBottom:6}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#92400e",fontFamily:"sans-serif",marginBottom:2}}>
-                  {calc.count} chains minimum <span style={{fontSize:10,fontWeight:400,color:"#aaaaaa"}}>(FMCSA 49 CFR 393)</span>
-                </div>
-                <div style={{fontSize:10,color:"#888888",fontFamily:"sans-serif",lineHeight:1.6}}>{calc.note}</div>
-              </div>
-            )}
-            {isAdmin?(
-              <div>
-                <input style={SI} value={stored}
-                  onChange={e=>{const updatedTI={...ti,"Chains Required":e.target.value};setCurrent(c=>({...c,transportInfo:updatedTI}));}}
-                  onBlur={e=>saveTransport("Chains Required",e.target.value)}
-                  placeholder={calc.count>0?`Minimum ${calc.count} chains (editable)`:"e.g. 6 chains"}/>
-                <div style={{fontSize:9,color:"#aaaaaa",fontFamily:"sans-serif",marginTop:3}}>Edit to reflect actual chains used — formula is the legal minimum</div>
-              </div>
-            ):(
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #eeeeee"}}>
-                <span style={{color:"#666666",fontSize:12,fontFamily:"sans-serif"}}>Chains Required</span>
-                <span style={{fontSize:13,fontWeight:600,color:"#111111",fontFamily:"sans-serif"}}>{stored||calc.count+" chains (calculated)"}</span>
-              </div>
-            )}
-          </div>
-        );
-      })()}
+      <SelectField label="Securement" field="Securement" options={["Chains","Straps","Chains & Straps"]}/>
       <SelectField label="Exhaust Bag Required" field="Exhaust Bag Required" options={["No","Yes"]} fallback="No"/>
       <SelectField label="Boom Securement" field="Boom Securement" options={["No","Yes"]} fallback="No"/>
       {current.haulerNote&&(
