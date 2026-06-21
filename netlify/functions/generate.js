@@ -31,6 +31,10 @@ exports.handler = async function(event) {
     return { statusCode: 400, body: JSON.stringify({ error: { message: "Invalid request body" } }) };
   }
 
+  // Always use latest stable model regardless of what client requests
+  const CURRENT_MODEL = "claude-sonnet-4-6";
+  if(body.model) body.model = CURRENT_MODEL;
+
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
