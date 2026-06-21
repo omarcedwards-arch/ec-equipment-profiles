@@ -192,6 +192,33 @@ const store = {
 
 const slug = n => n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
 
+function addWatermark(canvas) {
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  // Bottom right watermark
+  const fontSize = Math.max(14, Math.round(w * 0.035));
+  ctx.font = `bold ${fontSize}px sans-serif`;
+  const text1 = "EDWARDS CARRIERS";
+  const text2 = "edwardscarriers.com";
+  const padding = fontSize * 0.6;
+  const boxW = Math.max(ctx.measureText(text1).width, ctx.measureText(text2).width) + padding*2;
+  const boxH = fontSize * 2.8;
+  const x = w - boxW - padding;
+  const y = h - boxH - padding;
+  // Semi-transparent dark box
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(x, y, boxW, boxH, 6) : ctx.rect(x, y, boxW, boxH);
+  ctx.fill();
+  // Gold text
+  ctx.fillStyle = "#c9a227";
+  ctx.fillText(text1, x + padding, y + fontSize * 1.2);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `${Math.round(fontSize*0.7)}px sans-serif`;
+  ctx.fillText(text2, x + padding, y + fontSize * 2.2);
+  return canvas;
+}
+
 function resizeToBase64(file) {
   return new Promise(resolve => {
     const reader = new FileReader();
@@ -206,6 +233,7 @@ function resizeToBase64(file) {
         const ctx = c.getContext("2d");
         ctx.imageSmoothingQuality = "high";
         ctx.drawImage(img,0,0,c.width,c.height);
+        addWatermark(c);
         resolve(c.toDataURL("image/jpeg",0.9));
       };
       img.src = ev.target.result;
@@ -1313,7 +1341,14 @@ export default function App() {
   async function loadCustom(){
     try{
       const items = await db.getAll();
-      setCustom(items||[]);
+      // Load haul counts for each profile
+      const withCounts = await Promise.all((items||[]).map(async eq => {
+        try{
+          const logs = await db.getLogs(eq.id);
+          return {...eq, _haulCount: logs.length};
+        }catch{ return {...eq, _haulCount:0}; }
+      }));
+      setCustom(withCounts);
     }catch(e){console.error(e);setCustom([]);}
   }
 
@@ -1527,7 +1562,7 @@ export default function App() {
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search equipment..." style={{flex:1,background:"#f8f9fa",border:"1px solid #44403c",borderRadius:8,padding:"11px 14px",color:"#1a1a1a",fontSize:13,fontFamily:"monospace",outline:"none"}}/>
         {isAdmin&&<Btn amber onClick={()=>{setAddError(null);setScreen("add");}}>+ ADD</Btn>}
       </div>
-      {custom.length>0&&<><SL>Custom ({custom.length})</SL><Grd>{custom.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} badge="✓ HAULED" onClick={()=>openProfile(eq)}/>)}</Grd><div style={{marginBottom:16}}/></>}
+      {custom.length>0&&<><SL>Custom ({custom.length})</SL><Grd>{custom.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} badge="✓ HAULED" haulCount={eq._haulCount||0} onClick={()=>openProfile(eq)}/>)}</Grd><div style={{marginBottom:16}}/></>}
       <SL>Built-In Library ({PREBUILT.filter(e=>ok(e,search)).length})</SL>
       <Grd>{PREBUILT.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} onClick={()=>openProfile(eq)}/>)}</Grd>
       {!PREBUILT.concat(custom).some(e=>ok(e,search))&&<div style={{textAlign:"center",padding:"40px 20px",color:"#dee2e6",fontFamily:"monospace",fontSize:11}}>No results for "{search}"</div>}
@@ -1675,6 +1710,19 @@ export default function App() {
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
         <Btn ghost onClick={()=>setScreen("home")}>← BACK</Btn>
         <Btn ghost active={shareOpen} onClick={()=>setShare(s=>!s)}>SHARE</Btn>
+        <Btn amber onClick={()=>{
+          const subj = encodeURIComponent("Transport Quote Request — "+current.name);
+          const body = encodeURIComponent(
+            "Hi Edwards Carriers,\n\nI would like to request a quote to transport the following equipment:\n\n"+
+            "Equipment: "+current.name+"\n"+
+            "Weight: "+(current.keySpecs?.find(s=>s.label==="Operating Weight")?.value||"See specs")+"\n"+
+            "Dimensions: "+(current.dimensions?.["Equipment Width"]||"")+" wide x "+(current.dimensions?.["Equipment Height"]||"")+" tall\n"+
+            "Trailer Required: "+(current.transportInfo?.["Trailer Type"]||"")+"\n\n"+
+            "Pickup Location:\nDelivery Location:\nPreferred Date:\n\n"+
+            "Please contact me at:\nName:\nPhone:\nEmail:\n"
+          );
+          window.open("mailto:dispatch@edwardscarriers.com?subject="+subj+"&body="+body);
+        }}>REQUEST QUOTE</Btn>
         {isAdmin&&isCustom&&<Btn danger onClick={()=>{deleteCustom(current._id||current.id);setScreen("home");}}>DELETE</Btn>}
       </div>
       {shareOpen&&(
@@ -1804,9 +1852,20 @@ function Page({children,toast,onClear}){return(<div style={{fontFamily:"'Georgia
 function Hdr(){return(<div style={{marginBottom:22}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:9,letterSpacing:4,color:"#8b6914",textTransform:"uppercase",fontFamily:"monospace"}}>Edwards Carriers</div><div style={{fontSize:18,fontWeight:700,color:"#1a1a1a",letterSpacing:-0.5}}>Equipment Specs</div></div><div style={{textAlign:"right"}}><div style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>edwardscarriers.com</div><div style={{fontSize:8,color:"#adb5bd",fontFamily:"monospace",letterSpacing:2}}>@edwardscarriers</div></div></div><div style={{fontSize:11,color:"#999999",fontFamily:"sans-serif",marginTop:6}}>Specs and transport requirements for equipment we haul</div></div>);}
 function SL({children}){return <div style={{fontSize:9,color:"#adb5bd",fontFamily:"monospace",letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>{children}</div>;}
 function Grd({children}){return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:10}}>{children}</div>;}
-function Crd({eq,onClick,badge}){
+function Crd({eq,onClick,badge,haulCount}){
   const[h,setH]=useState(false);
-  return(<div onClick={onClick} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{background:"#f8f9fa",border:"1px solid "+(h?"#c9a227":"#ced4da"),borderRadius:10,padding:16,cursor:"pointer",transition:"border-color 0.15s",position:"relative"}}>{badge&&<span style={{position:"absolute",top:10,right:10,background:"#1a3a5c",color:"#c9a227",fontSize:8,fontFamily:"monospace",padding:"2px 7px",borderRadius:10}}>{badge}</span>}<div style={{fontSize:9,color:"#8b6914",fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>{eq.category}</div><div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:5,lineHeight:1.3}}>{eq.name}</div><div style={{fontSize:11,color:"#c9a227",fontFamily:"monospace",marginBottom:5}}>{eq.keySpecs?.[0]?.value}</div><div style={{fontSize:10,color:"#adb5bd",fontFamily:"monospace"}}>{eq.transportInfo?.["Trailer Type"]}</div></div>);
+  return(
+    <div onClick={onClick} onMouseEnter={()=>setH(true)} onMouseLeave={()=>setH(false)} style={{background:"#f8f9fa",border:"1px solid "+(h?"#c9a227":"#ced4da"),borderRadius:10,padding:16,cursor:"pointer",transition:"border-color 0.15s",position:"relative"}}>
+      {badge&&<span style={{position:"absolute",top:10,right:10,background:"#1a3a5c",color:"#c9a227",fontSize:8,fontFamily:"monospace",padding:"2px 7px",borderRadius:10}}>{badge}</span>}
+      <div style={{fontSize:9,color:"#8b6914",fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>{eq.category}</div>
+      <div style={{fontSize:14,fontWeight:700,color:"#1a1a1a",marginBottom:5,lineHeight:1.3}}>{eq.name}</div>
+      <div style={{fontSize:11,color:"#c9a227",fontFamily:"monospace",marginBottom:5}}>{eq.keySpecs?.[0]?.value}</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:10,color:"#adb5bd",fontFamily:"monospace"}}>{eq.transportInfo?.["Trailer Type"]}</div>
+        {haulCount>0&&<div style={{fontSize:9,color:"#22c55e",fontFamily:"monospace",fontWeight:700}}>{haulCount} haul{haulCount!==1?"s":""}</div>}
+      </div>
+    </div>
+  );
 }
 function Btn({children,onClick,amber,ghost,active,danger,disabled,style={}}){
   const b={padding:"6px 14px",borderRadius:6,fontSize:10,fontFamily:"monospace",letterSpacing:1,cursor:disabled?"not-allowed":"pointer",border:"1px solid",transition:"all 0.15s",...style};
