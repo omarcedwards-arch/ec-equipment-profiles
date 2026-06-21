@@ -1195,6 +1195,46 @@ function RoutePlannerTab({eq}) {
   );
 }
 
+
+function DimensionsTab({current, isAdmin, onSave}) {
+  const expandKey = k => {
+    const map = {"Length":"Equipment Length","Width":"Equipment Width","Height":"Equipment Height",
+      "Weight":"Equipment Weight","Clearance":"Ground Clearance","Gauge":"Track Gauge",
+      "Transport Length":"Equipment Length","Transport Width":"Equipment Width","Transport Height":"Equipment Height"};
+    return map[k]||k;
+  };
+  const [dims, setDims] = React.useState(current.dimensions||{});
+  React.useEffect(()=>setDims(current.dimensions||{}),[current.id||current.name]);
+
+  const SI = {background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"7px 10px",
+    color:"#222222",fontSize:12,fontFamily:"sans-serif",width:"120px",textAlign:"right",boxSizing:"border-box"};
+
+  return (
+    <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>
+      {Object.entries(dims).map(([k,v])=>(
+        <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #eeeeee"}}>
+          <span style={{color:"#666666",fontSize:12,fontFamily:"sans-serif",fontWeight:500}}>{expandKey(k)}</span>
+          {isAdmin?(
+            <input
+              style={SI}
+              value={v}
+              onChange={e=>setDims(d=>({...d,[k]:e.target.value}))}
+              onBlur={()=>onSave(dims)}
+            />
+          ):(
+            <span style={{color:"#c9a227",fontSize:13,fontWeight:600,fontFamily:"sans-serif"}}>{v}</span>
+          )}
+        </div>
+      ))}
+      {isAdmin&&(
+        <div style={{marginTop:14}}>
+          <Btn amber onClick={()=>onSave(dims)} style={{width:"100%"}}>Save Dimensions</Btn>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [screen,setScreen]   = useState("home");
   const [current,setCurrent] = useState(null);
@@ -1657,10 +1697,13 @@ export default function App() {
         {["specs","dimensions","transport","route","about",...(isAdmin?["notes"]:[])].map(t=><Btn key={t} ghost active={tab===t} onClick={()=>setTab(t)}>{t==="route"?"ROUTE PLAN":t.toUpperCase()}</Btn>)}
       </div>
       {tab==="specs"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10}}>{current.keySpecs?.map((s,i)=>(<div key={i} style={{background:"#f8f9fa",border:"1px solid #292524",borderRadius:10,padding:"13px 12px"}}><div style={{fontSize:20,marginBottom:5}}>{s.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#c9a227",fontFamily:"monospace"}}>{s.value}</div><div style={{fontSize:9,color:"#6c757d",letterSpacing:1.5,textTransform:"uppercase",marginTop:3}}>{s.label}</div></div>))}</div>}
-      {tab==="dimensions"&&(()=>{
-        const expandKey=k=>{const map={"Length":"Equipment Length","Width":"Equipment Width","Height":"Equipment Height","Weight":"Equipment Weight","Clearance":"Ground Clearance","Gauge":"Track Gauge","Transport Length":"Equipment Length","Transport Width":"Equipment Width","Transport Height":"Equipment Height"};return map[k]||k;};
-        return <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>{Object.entries(current.dimensions||{}).map(([k,v])=>(<div key={k} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #eeeeee"}}><span style={{color:"#666666",fontSize:12,fontFamily:"sans-serif",fontWeight:500}}>{expandKey(k)}</span><span style={{color:"#c9a227",fontSize:13,fontWeight:600,fontFamily:"sans-serif"}}>{v}</span></div>))}</div>;
-      })()}
+      {tab==="dimensions"&&<DimensionsTab current={current} isAdmin={isAdmin} onSave={async(dims)=>{
+        const eqId=current._id||current.id;
+        const updated={...current,dimensions:dims};
+        setCurrent(updated);
+        if(eqId) await db.update(eqId,{dimensions:dims});
+        setToast("Dimensions saved");
+      }}/>}
       {tab==="transport"&&(()=>{
   const ti = current.transportInfo||{};
   const SI = {background:"#ffffff",border:"1px solid #cccccc",borderRadius:6,padding:"8px 10px",color:"#111111",fontSize:12,fontFamily:"sans-serif",width:"100%",marginTop:4,boxSizing:"border-box"};
