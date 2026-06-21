@@ -96,7 +96,7 @@ const db = {
   },
   async getPhotos(equipmentId) {
     try {
-      const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_photos?equipment_id=eq."+equipmentId+"&order=created_at.desc", { headers: H });
+      const res = await fetch(SUPABASE_URL+"/rest/v1/equipment_photos?equipment_id=eq."+equipmentId+"&order=created_at.asc", { headers: H });
       return res.ok ? res.json() : [];
     } catch { return []; }
   },
@@ -1568,13 +1568,16 @@ export default function App() {
       setImgMode("photo");
       if(eqId){
         // Save base64 to equipment_photos table
-        const inserted = await db.insertPhoto(eqId, b64, true);
+        const isFirst = photos.length === 0;
+        const inserted = await db.insertPhoto(eqId, b64, isFirst);
         if(inserted){
+          const newPhotos = await db.getPhotos ? null : null; // trigger reload
           await loadPhotos(eqId);
-          setPhotoIdx(0);
+          // Stay on first photo if it's the main, otherwise stay on current
+          if(isFirst) setPhotoIdx(0);
         } else {
-          setPhotos(prev=>[{id:Date.now()+"",url:b64,equipment_id:eqId,is_primary:true},...prev]);
-          setPhotoIdx(0);
+          setPhotos(prev=>[...prev,{id:Date.now()+"",url:b64,equipment_id:eqId,is_primary:isFirst}]);
+          if(isFirst) setPhotoIdx(0);
         }
       } else {
         // localStorage for prebuilt profiles
