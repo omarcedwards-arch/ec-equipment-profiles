@@ -1288,6 +1288,55 @@ function DimensionsTab({current, isAdmin, onSave}) {
   );
 }
 
+
+function calcChainsRequired(weightLbs, lengthStr) {
+  const weight = parseFloat(String(weightLbs).replace(/,/g,""))||0;
+  const length = parseFeetLocal(lengthStr);
+  const CHAIN_WLL = 6600;
+
+  if(weight === 0) return {count:0, note:"Enter weight to calculate"};
+
+  // FMCSA 49 CFR 393.100-136 length-based minimum
+  let lengthMin = 0;
+  if(length > 0) {
+    if(length <= 5) lengthMin = 2;
+    else if(length <= 10) lengthMin = 2;
+    else if(length <= 20) lengthMin = 3;
+    else {
+      lengthMin = 4 + Math.ceil((length - 20) / 10);
+    }
+  }
+
+  // WLL-based minimum (50% of cargo weight)
+  const wllMin = weight <= 10000 ? 4 : Math.max(4, Math.ceil((weight * 0.5) / CHAIN_WLL));
+
+  const count = Math.max(lengthMin, wllMin);
+  const totalWLL = count * CHAIN_WLL;
+  const requiredWLL = Math.round(weight * 0.5);
+
+  let note = "";
+  if(lengthMin >= wllMin && length > 0) {
+    note = `Length rule (${length.toFixed(1)} ft → ${lengthMin} chains) · WLL rule (50% of ${weight.toLocaleString()} lbs ÷ ${CHAIN_WLL.toLocaleString()} WLL = ${wllMin} chains) · Using length minimum`;
+  } else {
+    note = `WLL rule: 50% of ${weight.toLocaleString()} lbs = ${requiredWLL.toLocaleString()} lbs required · ${count} chains × ${CHAIN_WLL.toLocaleString()} lbs = ${totalWLL.toLocaleString()} lbs WLL · Per FMCSA 49 CFR 393`;
+  }
+
+  return {count, note};
+}
+
+function parseFeetLocal(str) {
+  if(!str) return 0;
+  str = String(str).trim();
+  if(/^\d+(\.\d+)?$/.test(str)) return parseFloat(str);
+  const ftIn = str.match(/(\d+)\s*ft\s*(\d+)?\s*in?/i);
+  if(ftIn) return parseInt(ftIn[1]) + (parseInt(ftIn[2])||0)/12;
+  const apos = str.match(/(\d+)['](\d+)?/);
+  if(apos) return parseInt(apos[1]) + (parseInt(apos[2])||0)/12;
+  const inOnly = str.match(/^(\d+(\.\d+)?)\s*in/i);
+  if(inOnly) return parseFloat(inOnly[1])/12;
+  return parseFloat(str)||0;
+}
+
 export default function App() {
   const [screen,setScreen]   = useState("home");
   const [current,setCurrent] = useState(null);
@@ -1815,7 +1864,40 @@ export default function App() {
       <SelectField label="Trailer Type" field="Trailer Type" options={["RGN / Lowboy","Multi-Axle Lowboy","Flatbed","Step Deck","Double Drop","Extendable RGN","Multi-Trailer Convoy"]}/>
       <SelectField label="Permits Required" field="Permits Required" options={["None","Overheight","Overwidth","Overweight","Overheight + Overwidth","Overheight + Overweight","Overwidth + Overweight","All Permits"]} fallback="None"/>
       <SelectField label="Escort Required" field="Escort Required" options={["None","1 Pilot Car","2 Pilot Cars","Police Escort","Police + Pilot Cars"]} fallback="None"/>
-      <InputField label="Chains Required" field="Chains Required"/>
+      {(()=>{
+        const weight = current.keySpecs?.find(s=>s.label==="Operating Weight")?.value||"";
+        const length = current.dimensions?.["Equipment Length"]||current.dimensions?.["Transport Length"]||"";
+        const calc = calcChainsRequired(weight, length);
+        const stored = ti["Chains Required"]||"";
+        const LB2 = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:4,marginTop:14,display:"block"};
+        return (
+          <div>
+            <label style={LB2}>Chains Required</label>
+            {calc.count>0&&(
+              <div style={{background:"#fffbeb",border:"1px solid #c9a227",borderRadius:6,padding:"8px 10px",marginBottom:6}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#92400e",fontFamily:"sans-serif",marginBottom:2}}>
+                  {calc.count} chains minimum <span style={{fontSize:10,fontWeight:400,color:"#aaaaaa"}}>(FMCSA 49 CFR 393)</span>
+                </div>
+                <div style={{fontSize:10,color:"#888888",fontFamily:"sans-serif",lineHeight:1.6}}>{calc.note}</div>
+              </div>
+            )}
+            {isAdmin?(
+              <div>
+                <input style={SI} value={stored}
+                  onChange={e=>{const updatedTI={...ti,"Chains Required":e.target.value};setCurrent(c=>({...c,transportInfo:updatedTI}));}}
+                  onBlur={e=>saveTransport("Chains Required",e.target.value)}
+                  placeholder={calc.count>0?`Minimum ${calc.count} chains (editable)`:"e.g. 6 chains"}/>
+                <div style={{fontSize:9,color:"#aaaaaa",fontFamily:"sans-serif",marginTop:3}}>Edit to reflect actual chains used — formula is the legal minimum</div>
+              </div>
+            ):(
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #eeeeee"}}>
+                <span style={{color:"#666666",fontSize:12,fontFamily:"sans-serif"}}>Chains Required</span>
+                <span style={{fontSize:13,fontWeight:600,color:"#111111",fontFamily:"sans-serif"}}>{stored||calc.count+" chains (calculated)"}</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
       <SelectField label="Exhaust Bag Required" field="Exhaust Bag Required" options={["No","Yes"]} fallback="No"/>
       <SelectField label="Boom Securement" field="Boom Securement" options={["No","Yes"]} fallback="No"/>
       {current.haulerNote&&(
