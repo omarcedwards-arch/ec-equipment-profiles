@@ -1682,10 +1682,15 @@ export default function App() {
 
   function InputField({label, field, placeholder}){
     const val = ti[field]||"";
+    const [local, setLocal] = React.useState(val);
+    React.useEffect(()=>setLocal(ti[field]||""),[ti[field]]);
     if(!isAdmin) return <div style={RO}><span style={ROL}>{label}</span><span style={ROV}>{val||"—"}</span></div>;
     return (<>
       <label style={LB}>{label}</label>
-      <input style={SI} value={val} onChange={e=>saveTransport(field,e.target.value)} placeholder={placeholder||""}/>
+      <input style={SI} value={local}
+        onChange={e=>setLocal(e.target.value)}
+        onBlur={e=>saveTransport(field,e.target.value)}
+        placeholder={placeholder||""}/>
     </>);
   }
 
