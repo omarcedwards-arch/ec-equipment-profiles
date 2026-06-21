@@ -161,11 +161,9 @@ CRITICAL RULES:
 - dimensions: use EXACTLY these key names where applicable: "Equipment Length", "Equipment Width", "Equipment Height", "Equipment Weight", "Ground Clearance", "Track Width", "Track Gauge", "Turning Radius", "Tire Size". Always use full labels — never abbreviate to just "Length" or "Width". Use "Equipment" not "Transport" for machine dimensions since transport height varies by trailer.
 - transportInfo: include ALL of these fields:
   "Trailer Type": most appropriate from [RGN / Lowboy, Multi-Axle Lowboy, Flatbed, Step Deck, Double Drop, Extendable RGN, Multi-Trailer Convoy],
-  "Lowboy Tonnage": most appropriate from [35 Ton Lowboy, 40 Ton Lowboy, 50-55 Ton Lowboy] or "N/A",
   "Permits Required": accurate assessment from [None, Overheight, Overwidth, Overweight, Overheight + Overwidth, Overheight + Overweight, Overwidth + Overweight, All Permits],
   "Escort Required": accurate from [None, 1 Pilot Car, 2 Pilot Cars, Police Escort, Police + Pilot Cars],
   "Chains Required": calculate exactly — minimum 4 chains DOT required over 10,000 lbs, total WLL must equal 50% of cargo weight at 6600 lbs WLL per chain. Show the math e.g. "6 chains @ 6,600 lbs WLL = 39,600 lbs (50% of 78,000 lbs = 39,000 lbs required)",
-  "Recommended Axles": specific axle configuration,
   "Exhaust Bag Required": "Yes" or "No",
   "Boom Securement": "Yes" if machine has a boom, arm, or mast that requires securing for transport, otherwise "No",
   "Rear Overhang": allowable rear overhang note
@@ -1487,7 +1485,7 @@ export default function App() {
         {label:"Trailer Type",value:newEq.trailerType,icon:"🚛"},
       ].filter(s=>s.value!=="—"),
       dimensions:{"Overall Length":newEq.length||"—","Overall Width":newEq.width||"—","Overall Height":newEq.height||"—"},
-      transportInfo:{"Trailer Type":newEq.trailerType,"Lowboy Tonnage":newEq.tonnage||"N/A","Permits Required":newEq.permits||"None","Escort Required":newEq.escort||"None","Chains Required":newEq.chains?(newEq.chains+" chains"):"See DOT formula","Exhaust Bag Required":newEq.exhaustBag||"No","Boom Securement":newEq.boomSecurement||"No"},
+      transportInfo:{"Trailer Type":newEq.trailerType,"Permits Required":newEq.permits||"None","Escort Required":newEq.escort||"None","Chains Required":newEq.chains?(newEq.chains+" chains"):"See DOT formula","Exhaust Bag Required":newEq.exhaustBag||"No","Boom Securement":newEq.boomSecurement||"No"},
       haulerNote: newEq.haulerNote.trim()||"Verify all dimensions and weight with equipment owner before transport.",
       history: newEq.name.trim()+" — Added to Edwards Carriers equipment library.",
       tags:[newEq.category,"Heavy Equipment","Open Deck"],
@@ -1815,13 +1813,11 @@ export default function App() {
   return (
 <div style={{background:"#ffffff",border:"1px solid #dddddd",borderRadius:10,padding:18}}>
       <SelectField label="Trailer Type" field="Trailer Type" options={["RGN / Lowboy","Multi-Axle Lowboy","Flatbed","Step Deck","Double Drop","Extendable RGN","Multi-Trailer Convoy"]}/>
-      <SelectField label="Lowboy Tonnage" field="Lowboy Tonnage" options={["","35 Ton Lowboy","40 Ton Lowboy","50-55 Ton Lowboy"]}/>
       <SelectField label="Permits Required" field="Permits Required" options={["None","Overheight","Overwidth","Overweight","Overheight + Overwidth","Overheight + Overweight","Overwidth + Overweight","All Permits"]} fallback="None"/>
       <SelectField label="Escort Required" field="Escort Required" options={["None","1 Pilot Car","2 Pilot Cars","Police Escort","Police + Pilot Cars"]} fallback="None"/>
       <InputField label="Chains Required" field="Chains Required"/>
       <SelectField label="Exhaust Bag Required" field="Exhaust Bag Required" options={["No","Yes"]} fallback="No"/>
       <SelectField label="Boom Securement" field="Boom Securement" options={["No","Yes"]} fallback="No"/>
-      <InputField label="Recommended Tractor & Trailer Axles" field="Recommended Axles" placeholder="e.g. 5-7 Axle"/>
       {current.haulerNote&&(
         <div style={{marginTop:18,padding:13,background:"#fff3cd66",border:"1px solid #c9a227",borderRadius:8}}>
           <div style={{fontSize:11,color:"#c9a227",fontFamily:"monospace",marginBottom:5}}>Hauler Note</div>
