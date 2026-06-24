@@ -834,7 +834,7 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
   const [addingLog, setAddingLog] = React.useState(false);
   const SI2 = {background:"#f8f8f8",border:"1px solid #dddddd",borderRadius:6,padding:"8px 10px",color:"#222222",fontSize:12,fontFamily:"sans-serif",width:"100%",boxSizing:"border-box"};
   const LB2 = {fontSize:11,color:"#666666",fontFamily:"sans-serif",fontWeight:600,marginBottom:3,marginTop:10,display:"block"};
-  const EMPTY = {haul_date:"",actual_width:"",actual_height:"",actual_weight:"",permits_required:false,notes:"",attachment_url:""};
+  const EMPTY = {haul_date:"",pickup_city:"",pickup_state:"",delivery_city:"",delivery_state:"",actual_width:"",actual_height:"",actual_weight:"",permits_required:false,notes:"",attachment_url:""};
 
   async function saveLog() {
     if(!eqId){onToast("Save equipment first");return;}
@@ -858,6 +858,10 @@ function LoadLogTab({eqId, logs, newLog, setNewLog, savingLog, setSavingLog, loa
         <div style={{background:"#ffffff",border:"1px solid #c9a227",borderRadius:10,padding:16,marginBottom:16}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <div style={{gridColumn:"1/-1"}}><label style={LB2}>Date of Haul</label><input type="date" style={SI2} value={newLog.haul_date} onChange={e=>setNewLog(l=>({...l,haul_date:e.target.value}))}/></div>
+            <div><label style={LB2}>Pickup City</label><input style={SI2} value={newLog.pickup_city} onChange={e=>setNewLog(l=>({...l,pickup_city:e.target.value}))} placeholder="e.g. Grand Island"/></div>
+            <div><label style={LB2}>Pickup State</label><input style={SI2} value={newLog.pickup_state} onChange={e=>setNewLog(l=>({...l,pickup_state:e.target.value}))} placeholder="e.g. NE"/></div>
+            <div><label style={LB2}>Delivery City</label><input style={SI2} value={newLog.delivery_city} onChange={e=>setNewLog(l=>({...l,delivery_city:e.target.value}))} placeholder="e.g. Baltimore"/></div>
+            <div><label style={LB2}>Delivery State</label><input style={SI2} value={newLog.delivery_state} onChange={e=>setNewLog(l=>({...l,delivery_state:e.target.value}))} placeholder="e.g. MD"/></div>
             <div><label style={LB2}>Transport Width</label><input style={SI2} value={newLog.actual_width} onChange={e=>setNewLog(l=>({...l,actual_width:e.target.value}))} placeholder="e.g. 8 ft 5 in"/></div>
             <div><label style={LB2}>Transport Height</label><input style={SI2} value={newLog.actual_height} onChange={e=>setNewLog(l=>({...l,actual_height:e.target.value}))} placeholder="e.g. 11 ft 6 in"/></div>
             <div style={{gridColumn:"1/-1"}}><label style={LB2}>Transport Weight</label><input style={SI2} value={newLog.actual_weight} onChange={e=>setNewLog(l=>({...l,actual_weight:e.target.value}))} placeholder="e.g. 44,500 lbs"/></div>
@@ -1354,7 +1358,7 @@ export default function App() {
   const [photos,setPhotos]     = useState([]);
   const [photoIdx,setPhotoIdx] = useState(0);
   const [profileNotes,setProfileNotes] = useState("");
-  const EMPTY_LOG = {haul_date:"",actual_width:"",actual_height:"",actual_weight:"",permits_required:false,notes:"",attachment_url:""};
+  const EMPTY_LOG = {haul_date:"",pickup_city:"",pickup_state:"",delivery_city:"",delivery_state:"",actual_width:"",actual_height:"",actual_weight:"",permits_required:false,notes:"",attachment_url:""};
   const [newLog,setNewLog]     = useState(EMPTY_LOG);
   const [savingLog,setSavingLog] = useState(false);
   const [logs,setLogs]         = useState([]);
@@ -1609,13 +1613,31 @@ export default function App() {
     <Page toast={toast} onClear={()=>setToast(null)}>
       <Hdr/>
       <div style={{display:"flex",gap:10,marginBottom:18}}>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search equipment..." style={{flex:1,background:"#f8f9fa",border:"1px solid #44403c",borderRadius:8,padding:"11px 14px",color:"#1a1a1a",fontSize:13,fontFamily:"monospace",outline:"none"}}/>
-        {isAdmin&&<Btn amber onClick={()=>{setAddError(null);setScreen("add");}}>+ ADD</Btn>}
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search equipment..." style={{flex:1,background:"#ffffff",border:"1px solid #dddddd",borderRadius:8,padding:"11px 14px",color:"#1a1a1a",fontSize:13,fontFamily:"sans-serif",outline:"none"}}/>
+        {isAdmin?<Btn amber onClick={()=>{setAddError(null);setScreen("add");}}>+ ADD</Btn>:<Btn amber onClick={()=>{}}>SEARCH</Btn>}
       </div>
-      {custom.length>0&&<><SL>Custom ({custom.length})</SL><Grd>{custom.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} badge="✓ HAULED" haulCount={eq._haulCount||0} onClick={()=>openProfile(eq)}/>)}</Grd><div style={{marginBottom:16}}/></>}
-      <SL>Built-In Library ({PREBUILT.filter(e=>ok(e,search)).length})</SL>
-      <Grd>{PREBUILT.filter(e=>ok(e,search)).map((eq,i)=><Crd key={i} eq={eq} onClick={()=>openProfile(eq)}/>)}</Grd>
-      {!PREBUILT.concat(custom).some(e=>ok(e,search))&&<div style={{textAlign:"center",padding:"40px 20px",color:"#dee2e6",fontFamily:"monospace",fontSize:11}}>No results for "{search}"</div>}
+      <Grd>{[...custom.filter(e=>ok(e,search)).map((eq,i)=><Crd key={"c"+i} eq={eq} badge="✓ HAULED" haulCount={eq._haulCount||0} onClick={()=>openProfile(eq)}/>),...PREBUILT.filter(e=>ok(e,search)).map((eq,i)=><Crd key={"p"+i} eq={eq} onClick={()=>openProfile(eq)}/>)]}</Grd>
+      {!PREBUILT.concat(custom).some(e=>ok(e,search))&&search.trim()&&(
+        <div style={{textAlign:"center",padding:"36px 20px",background:"#ffffff",borderRadius:12,border:"1px solid #eeeeee",marginTop:10}}>
+          <div style={{fontSize:32,marginBottom:12}}>🔍</div>
+          <div style={{fontSize:15,fontWeight:700,color:"#111111",fontFamily:"sans-serif",marginBottom:8}}>
+            We haven&apos;t hauled &ldquo;{search}&rdquo; yet
+          </div>
+          <div style={{fontSize:13,color:"#666666",fontFamily:"sans-serif",lineHeight:1.7,marginBottom:20}}>
+            Don&apos;t see your equipment? We haul it all.<br/>Request a quote and we&apos;ll get back to you within 24 hours.
+          </div>
+          <button onClick={()=>{
+            const subj = encodeURIComponent("Transport Quote Request — "+search);
+            const body = encodeURIComponent("Hi Edwards Carriers,\n\nI need a transport quote for:\n\nEquipment: "+search+"\n\nPickup Location:\nDelivery Location:\nPreferred Date:\n\nName:\nPhone:\nEmail:\n");
+            window.open("mailto:dispatch@edwardscarriers.com?subject="+subj+"&body="+body);
+          }} style={{padding:"12px 28px",background:"#c9a227",color:"#111111",borderRadius:8,fontSize:13,fontWeight:700,fontFamily:"sans-serif",cursor:"pointer",border:"none",display:"block",margin:"0 auto 10px",width:"100%"}}>
+            Request a Quote
+          </button>
+          <div style={{fontSize:11,color:"#aaaaaa",fontFamily:"sans-serif",marginTop:8}}>
+            Questions? <a href="tel:+12159304665" style={{color:"#c9a227",textDecoration:"none",fontWeight:600}}>Call Us</a>
+          </div>
+        </div>
+      )}
       <div style={{textAlign:"center",marginTop:30,paddingTop:16,borderTop:"1px solid #eeeeee"}}>
         {isAdmin?(
           <button onClick={()=>{auth.logout();setIsAdmin(false);setToast("LOGGED OUT");}} style={{background:"none",border:"none",color:"#aaaaaa",fontSize:10,fontFamily:"monospace",letterSpacing:1,cursor:"pointer",textDecoration:"underline"}}>Admin: Logged in — Log out</button>
